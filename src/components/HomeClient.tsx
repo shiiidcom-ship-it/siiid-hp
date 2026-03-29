@@ -512,70 +512,6 @@ export function HomeClient() {
         </div>
       </section>
 
-      {/* ── CONTACT ───────────────────────────────────────── */}
-      <section
-        id="contact"
-        className="reveal-section"
-        style={{
-          padding: "80px clamp(32px, 8vw, 120px) 120px",
-          borderTop: "1px solid var(--border)",
-        }}
-      >
-        <div>
-        <p
-          style={{
-            fontFamily: "var(--font-syne)",
-            fontSize: "10px",
-            letterSpacing: "0.28em",
-            color: "rgba(14,22,49,0.3)",
-            textTransform: "uppercase",
-            marginBottom: "32px",
-          }}
-        >
-          Contact
-        </p>
-        <h2
-          style={{
-            fontFamily: "var(--font-mincho)",
-            fontSize: "clamp(24px, 3.5vw, 48px)",
-            fontWeight: "700",
-            color: "var(--text)",
-            margin: "0 0 24px",
-          }}
-        >
-          お問い合わせ
-        </h2>
-        <p
-          style={{
-            fontFamily: "var(--font-sans)",
-            fontSize: "13px",
-            fontWeight: "300",
-            color: "var(--muted)",
-            lineHeight: "1.9",
-            marginBottom: "40px",
-          }}
-        >
-          事業提携・取材・その他のお問い合わせは下記よりご連絡ください。
-        </p>
-        <a
-          href="mailto:info@siiid.co.jp"
-          style={{
-            fontFamily: "var(--font-syne)",
-            fontSize: "clamp(16px, 2.5vw, 28px)",
-            fontWeight: "700",
-            color: "var(--blue)",
-            textDecoration: "none",
-            letterSpacing: "0.04em",
-            borderBottom: "1px solid var(--border)",
-            paddingBottom: "4px",
-            transition: "border-color 0.3s",
-          }}
-          className="email-link"
-        >
-          info@siiid.co.jp
-        </a>
-        </div>
-      </section>
 
       {/* ── FOOTER ───────────────────────────────────────── */}
       <footer
@@ -612,7 +548,6 @@ export function HomeClient() {
 
       <style>{`
         .nav-link:hover { color: var(--text) !important; }
-        .email-link:hover { border-color: var(--blue) !important; }
         .cta-btn-koepass:hover { background: rgba(232,69,140,0.08) !important; }
         .cta-btn-seebuy:hover  { background: rgba(22,163,74,0.08)  !important; }
         @media (max-width: 768px) {
