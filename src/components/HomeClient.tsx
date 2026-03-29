@@ -34,15 +34,6 @@ const PRODUCTS = [
   },
 ];
 
-/* ── masonry photo data ────────────────────────────────────── */
-const MASONRY_ITEMS = [
-  { label: "オフィスの様子",     sub: "渋谷・コワーキング",   span: 3, gradient: "linear-gradient(135deg,#6366f1,#8b5cf6)" },
-  { label: "チームランチ",       sub: "毎週金曜日",           span: 2, gradient: "linear-gradient(135deg,#0ea5e9,#22c55e)" },
-  { label: "プロダクト開発",     sub: "週次スプリント",       span: 2, gradient: "linear-gradient(135deg,#f97316,#eab308)" },
-  { label: "ユーザーインタビュー", sub: "リサーチ駆動",       span: 3, gradient: "linear-gradient(135deg,#e8458c,#f472b6)" },
-  { label: "ハッカソン",         sub: "48時間",               span: 2, gradient: "linear-gradient(135deg,#14b8a6,#3b82f6)" },
-  { label: "キックオフ",         sub: "2025年4月",            span: 2, gradient: "linear-gradient(135deg,#a855f7,#ec4899)" },
-];
 
 /* ── split-text reveal (GSAP-powered) ──────────────────────── */
 function SplitTextReveal({
@@ -114,8 +105,7 @@ export function HomeClient() {
     if (!hero) return;
 
     const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
-    tl.to(hero.querySelector(".hero-label"), { opacity: 1, y: 0, duration: 0.8, delay: 0.1 })
-      .to(hero.querySelector(".hero-scroll"), { opacity: 1, duration: 1 }, "-=0.3");
+    tl.to(hero.querySelector(".hero-scroll"), { opacity: 1, duration: 1, delay: 1.5 });
 
     return () => { tl.kill(); };
   }, []);
@@ -257,22 +247,6 @@ export function HomeClient() {
             maxWidth: "900px",
           }}
         >
-          {/* label */}
-          <p
-            className="hero-label"
-            style={{
-              fontFamily: "var(--font-syne)",
-              fontSize: "11px",
-              letterSpacing: "0.3em",
-              color: "rgba(14,22,49,0.35)",
-              textTransform: "uppercase",
-              marginBottom: "24px",
-              opacity: 0,
-            }}
-          >
-            Empowering Creators
-          </p>
-
           {/* main tagline */}
           <SplitTextReveal
             text="発信だけで生きていける、"
@@ -355,6 +329,7 @@ export function HomeClient() {
             padding: "80px clamp(32px, 8vw, 120px)",
             borderTop: "1px solid var(--border)",
             gap: "clamp(40px, 8vw, 120px)",
+            flexDirection: idx % 2 === 1 ? "row-reverse" : "row",
           }}
         >
           {/* text */}
@@ -498,89 +473,57 @@ export function HomeClient() {
               fontWeight: "300",
               color: "var(--muted)",
               lineHeight: "2.1",
+              marginBottom: "56px",
             }}
           >
             株式会社SiiiDは、「声」と「知識」という人間固有の資産に光を当てます。
             テクノロジーを通じて、クリエイターと発信者が持つ本質的な価値を
             適切に届け、新しい経済圏を生み出すことが私たちの使命です。
           </p>
+
+          {/* company info table */}
+          <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "var(--font-sans)", fontSize: "14px" }}>
+            <tbody>
+              {[
+                ["会社名", "株式会社SiiiD"],
+                ["設立", "2025年4月"],
+                ["代表", "石井 一真"],
+                ["所在地", "東京都渋谷区"],
+                ["事業内容", "KoePass（ボイスメッセージプラットフォーム）、Seebuy（有料Q&Aプラットフォーム）の企画・開発・運営"],
+              ].map(([label, value]) => (
+                <tr key={label} style={{ borderBottom: "1px solid var(--border)" }}>
+                  <td style={{ padding: "16px 0", color: "var(--muted)", fontWeight: "300", width: "120px", verticalAlign: "top", whiteSpace: "nowrap" }}>{label}</td>
+                  <td style={{ padding: "16px 0 16px 24px", color: "var(--text)", fontWeight: "400", lineHeight: "1.7" }}>{value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </section>
 
-      {/* ── JOIN US — masonry grid ─────────────────────────── */}
+      {/* ── MISSION / VALUES ─────────────────────────────── */}
       <section
-        id="join-us"
         className="reveal-section"
         style={{
           padding: "100px clamp(32px, 8vw, 120px)",
           borderTop: "1px solid var(--border)",
-          overflow: "hidden",
         }}
       >
-        <div style={{
-          display: "flex", alignItems: "flex-end", justifyContent: "space-between",
-          marginBottom: "48px", flexWrap: "wrap", gap: "24px",
-        }}>
-          <div>
-            <p style={{
-              fontFamily: "var(--font-syne)", fontSize: "10px", letterSpacing: "0.28em",
-              color: "rgba(14,22,49,0.3)", textTransform: "uppercase", marginBottom: "16px",
-            }}>Join Us</p>
-            <h2 style={{
-              fontFamily: "var(--font-mincho)", fontSize: "clamp(28px, 4vw, 52px)",
-              fontWeight: "700", color: "var(--text)", lineHeight: "1.3", margin: 0,
-            }}>
-              世界を変える仲間を、<br />探しています。
-            </h2>
-          </div>
-          <a
-            href="mailto:info@siiid.co.jp"
-            style={{
-              display: "inline-flex", alignItems: "center", gap: "10px",
-              padding: "14px 32px", border: "1px solid var(--text)", borderRadius: "2px",
-              color: "var(--text)", fontSize: "13px", fontFamily: "var(--font-syne)",
-              fontWeight: "700", letterSpacing: "0.1em", textDecoration: "none",
-              transition: "background 0.25s", textTransform: "uppercase", flexShrink: 0,
-            }}
-            className="cta-btn-joinus"
-          >
-            話を聞く →
-          </a>
-        </div>
+        <p style={{
+          fontFamily: "var(--font-syne)", fontSize: "10px", letterSpacing: "0.28em",
+          color: "rgba(14,22,49,0.3)", textTransform: "uppercase", marginBottom: "32px",
+        }}>Our Values</p>
 
-        {/* masonry CSS grid */}
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
-          gridAutoRows: "110px",
-          gap: "10px",
-        }}>
-          {MASONRY_ITEMS.map((item, i) => (
-            <div
-              key={i}
-             
-              style={{
-                gridRow: `span ${item.span}`,
-                borderRadius: "10px",
-                overflow: "hidden",
-                position: "relative",
-                background: item.gradient,
-              }}
-            >
-              <div style={{
-                position: "absolute", inset: 0,
-                background: "linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 55%)",
-              }} />
-              <div style={{ position: "absolute", bottom: "16px", left: "18px", right: "18px" }}>
-                <p style={{
-                  fontFamily: "var(--font-sans)", fontSize: "12px", fontWeight: "500",
-                  color: "white", margin: "0 0 3px", lineHeight: "1.4",
-                }}>{item.label}</p>
-                <p style={{
-                  fontFamily: "var(--font-sans)", fontSize: "10px", fontWeight: "300",
-                  color: "rgba(255,255,255,0.65)", margin: 0,
-                }}>{item.sub}</p>
-              </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "32px" }} className="values-grid">
+          {[
+            { num: "01", title: "発信者ファースト", desc: "すべての意思決定は「発信者にとって最もシンプルか」で判断します。" },
+            { num: "02", title: "フェアな収益構造", desc: "不透明な手数料や隠れたコストを排除し、発信者が正しく報われる仕組みを設計します。" },
+            { num: "03", title: "テクノロジーで摩擦をゼロに", desc: "「声を録る」「質問に答える」——それだけで収益が生まれる世界を技術で実現します。" },
+          ].map((v) => (
+            <div key={v.num} style={{ padding: "32px 0", borderTop: "1px solid var(--border)" }}>
+              <span style={{ fontFamily: "var(--font-syne)", fontSize: "12px", color: "var(--blue)", letterSpacing: "0.1em", fontWeight: "700" }}>{v.num}</span>
+              <h3 style={{ fontFamily: "var(--font-mincho)", fontSize: "20px", fontWeight: "700", color: "var(--text)", margin: "16px 0 12px", lineHeight: "1.4" }}>{v.title}</h3>
+              <p style={{ fontFamily: "var(--font-sans)", fontSize: "13px", color: "var(--muted)", lineHeight: "1.9", margin: 0, fontWeight: "300" }}>{v.desc}</p>
             </div>
           ))}
         </div>
@@ -689,13 +632,9 @@ export function HomeClient() {
         .email-link:hover { border-color: var(--blue) !important; }
         .cta-btn-koepass:hover { background: rgba(232,69,140,0.08) !important; }
         .cta-btn-seebuy:hover  { background: rgba(22,163,74,0.08)  !important; }
-        .cta-btn-joinus:hover  { background: rgba(14,22,49,0.06)   !important; }
         @media (max-width: 768px) {
           .section-visual { display: none !important; }
-          .masonry-grid-3 { grid-template-columns: repeat(2, 1fr) !important; }
-        }
-        @media (max-width: 480px) {
-          .masonry-grid-3 { grid-template-columns: 1fr !important; }
+          .values-grid { grid-template-columns: 1fr !important; }
         }
         @media (prefers-reduced-motion: reduce) {
           .char { opacity: 1 !important; transform: none !important; }
