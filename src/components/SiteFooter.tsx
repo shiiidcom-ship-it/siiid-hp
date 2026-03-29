@@ -40,7 +40,7 @@ export default function SiteFooter() {
               </span>
             </div>
             <p style={{ color: "var(--muted)", fontSize: "12px", lineHeight: "1.8", margin: 0 }}>
-              声と知識で、世界を変える。人と人の新しいつながりを創る。
+              発信だけで生きていける、を当たり前に。
             </p>
           </div>
 

@@ -1,7 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
+import gsap from "gsap";
+
+const GradientSphere = dynamic(() => import("./GradientSphere"), { ssr: false });
 
 /* ── product data ─────────────────────────────────────────── */
 const PRODUCTS = [
@@ -71,13 +75,50 @@ function SplitTextReveal({
 
 /* ── main component ───────────────────────────────────────── */
 export function HomeClient() {
-  /* Alpine.js 相当 — スクロール連動のナビ状態 */
   const [scrolled, setScrolled] = useState(false);
+  const heroRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 60);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  /* ── GSAP hero entrance timeline ── */
+  useEffect(() => {
+    const hero = heroRef.current;
+    if (!hero) return;
+
+    const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
+    tl.to(hero.querySelector(".hero-label"), { opacity: 1, y: 0, duration: 0.8, delay: 0.1 })
+      .to(hero.querySelector(".hero-sub"), { opacity: 1, y: 0, duration: 0.8 }, "-=0.3")
+      .to(hero.querySelector(".hero-ctas"), { opacity: 1, y: 0, duration: 0.8 }, "-=0.4")
+      .to(hero.querySelector(".hero-scroll"), { opacity: 1, duration: 1 }, "-=0.3");
+
+    return () => { tl.kill(); };
+  }, []);
+
+  /* ── GSAP scroll-triggered section reveals ── */
+  useEffect(() => {
+    const sections = document.querySelectorAll<HTMLElement>(".reveal-section");
+    const observers: IntersectionObserver[] = [];
+
+    sections.forEach((section) => {
+      gsap.set(section, { opacity: 0, y: 60 });
+      const observer = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) {
+            gsap.to(section, { opacity: 1, y: 0, duration: 1, ease: "power3.out" });
+            observer.unobserve(section);
+          }
+        },
+        { threshold: 0.15 }
+      );
+      observer.observe(section);
+      observers.push(observer);
+    });
+
+    return () => observers.forEach((o) => o.disconnect());
   }, []);
 
   return (
@@ -142,52 +183,22 @@ export function HomeClient() {
 
       {/* ── HERO ─────────────────────────────────────────── */}
       <section
+        ref={heroRef}
         style={{
           position: "relative",
           height: "100vh",
-          minHeight: "600px",
+          minHeight: "700px",
           overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
         }}
       >
-        {/* split-text tagline — upper right */}
-        <div
-          style={{
-            position: "absolute",
-            top: "clamp(100px, 15vh, 140px)",
-            right: "clamp(32px, 6vw, 80px)",
-            textAlign: "right",
-          }}
-        >
-          <SplitTextReveal
-            text="声と知識で、世界を変える。"
-            style={{
-              fontFamily: "var(--font-mincho)",
-              fontSize: "clamp(22px, 3vw, 38px)",
-              fontWeight: "800",
-              color: "var(--text)",
-              lineHeight: "1.5",
-              letterSpacing: "0.02em",
-              margin: "0 0 16px",
-            }}
-            delay={0.2}
-          />
-          <p
-            style={{
-              fontFamily: "var(--font-sans)",
-              fontSize: "clamp(11px, 1.3vw, 14px)",
-              fontWeight: "300",
-              color: "rgba(14,22,49,0.42)",
-              lineHeight: "1.9",
-              letterSpacing: "0.06em",
-            }}
-          >
-            人と人の新しいつながりを創り出す
-            <br />
-            2つのプラットフォーム。
-          </p>
-        </div>
+        {/* Three.js sphere background */}
+        <GradientSphere />
 
-        {/* giant SiiiD — bottom left */}
+        {/* giant SiiiD — watermark */}
         <div
           style={{
             position: "absolute",
@@ -196,6 +207,7 @@ export function HomeClient() {
             lineHeight: "1",
             userSelect: "none",
             pointerEvents: "none",
+            zIndex: 1,
           }}
         >
           <span
@@ -203,7 +215,7 @@ export function HomeClient() {
               fontFamily: "var(--font-syne)",
               fontSize: "clamp(120px, 22vw, 340px)",
               fontWeight: "800",
-              color: "rgba(14,22,49,0.07)",
+              color: "rgba(14,22,49,0.04)",
               letterSpacing: "-0.04em",
               display: "block",
             }}
@@ -212,16 +224,179 @@ export function HomeClient() {
           </span>
         </div>
 
+        {/* center content */}
+        <div
+          className="hero-content"
+          style={{
+            position: "relative",
+            zIndex: 2,
+            textAlign: "center",
+            padding: "0 24px",
+            maxWidth: "900px",
+          }}
+        >
+          {/* label */}
+          <p
+            className="hero-label"
+            style={{
+              fontFamily: "var(--font-syne)",
+              fontSize: "11px",
+              letterSpacing: "0.3em",
+              color: "rgba(14,22,49,0.35)",
+              textTransform: "uppercase",
+              marginBottom: "24px",
+              opacity: 0,
+            }}
+          >
+            Empowering Creators
+          </p>
+
+          {/* main tagline */}
+          <SplitTextReveal
+            text="発信だけで生きていける、"
+            style={{
+              fontFamily: "var(--font-mincho)",
+              fontSize: "clamp(28px, 5vw, 56px)",
+              fontWeight: "800",
+              color: "var(--text)",
+              lineHeight: "1.4",
+              letterSpacing: "-0.01em",
+              margin: "0",
+            }}
+            delay={0.3}
+          />
+          <SplitTextReveal
+            text="を当たり前に。"
+            style={{
+              fontFamily: "var(--font-mincho)",
+              fontSize: "clamp(28px, 5vw, 56px)",
+              fontWeight: "800",
+              color: "var(--text)",
+              lineHeight: "1.4",
+              letterSpacing: "-0.01em",
+              margin: "0 0 20px",
+            }}
+            delay={0.8}
+          />
+
+          {/* sub */}
+          <p
+            className="hero-sub"
+            style={{
+              fontFamily: "var(--font-sans)",
+              fontSize: "clamp(12px, 1.5vw, 15px)",
+              fontWeight: "300",
+              color: "rgba(14,22,49,0.45)",
+              lineHeight: "1.9",
+              letterSpacing: "0.04em",
+              margin: "0 0 48px",
+              opacity: 0,
+            }}
+          >
+            声と知識で、発信者のマネタイズを支えるプラットフォームカンパニー。
+          </p>
+
+          {/* 2-product CTA cards */}
+          <div
+            className="hero-ctas"
+            style={{
+              display: "flex",
+              gap: "16px",
+              justifyContent: "center",
+              flexWrap: "wrap",
+              opacity: 0,
+            }}
+          >
+            {PRODUCTS.map((p) => (
+              <Link
+                key={p.id}
+                href={p.href}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  padding: "16px 28px",
+                  background: "rgba(255,255,255,0.75)",
+                  backdropFilter: "blur(20px)",
+                  WebkitBackdropFilter: "blur(20px)",
+                  border: `1px solid ${p.accent}30`,
+                  borderRadius: "16px",
+                  textDecoration: "none",
+                  transition: "all 0.3s cubic-bezier(0.16,1,0.3,1)",
+                  boxShadow: "0 4px 24px rgba(14,22,49,0.06)",
+                }}
+                className={`hero-card hero-card-${p.id}`}
+              >
+                <div
+                  style={{
+                    width: "36px",
+                    height: "36px",
+                    borderRadius: "10px",
+                    background: `linear-gradient(135deg, ${p.accent}, ${p.light})`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "14px",
+                    fontWeight: "800",
+                    color: "white",
+                    fontFamily: "var(--font-syne)",
+                    flexShrink: 0,
+                  }}
+                >
+                  {p.name[0]}
+                </div>
+                <div style={{ textAlign: "left" }}>
+                  <div
+                    style={{
+                      fontFamily: "var(--font-syne)",
+                      fontSize: "14px",
+                      fontWeight: "700",
+                      color: "var(--text)",
+                      letterSpacing: "0.04em",
+                    }}
+                  >
+                    {p.name}
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: "var(--font-sans)",
+                      fontSize: "11px",
+                      color: "var(--muted)",
+                      fontWeight: "300",
+                    }}
+                  >
+                    {p.tagline}
+                  </div>
+                </div>
+                <span
+                  style={{
+                    fontSize: "16px",
+                    color: p.accent,
+                    marginLeft: "8px",
+                    transition: "transform 0.3s",
+                  }}
+                >
+                  →
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+
         {/* scroll indicator */}
         <div
+          className="hero-scroll"
           style={{
             position: "absolute",
             bottom: "40px",
-            right: "48px",
+            left: "50%",
+            transform: "translateX(-50%)",
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
             gap: "8px",
+            opacity: 0,
+            zIndex: 2,
           }}
         >
           <div
@@ -229,6 +404,7 @@ export function HomeClient() {
               width: "1px",
               height: "48px",
               background: "linear-gradient(to bottom, transparent, rgba(14,22,49,0.15))",
+              animation: "scrollPulse 2s ease-in-out infinite",
             }}
           />
           <span
@@ -237,10 +413,6 @@ export function HomeClient() {
               fontFamily: "var(--font-syne)",
               letterSpacing: "0.25em",
               color: "rgba(14,22,49,0.25)",
-              transform: "rotate(90deg)",
-              transformOrigin: "center",
-              display: "block",
-              marginTop: "8px",
             }}
           >
             SCROLL
@@ -252,6 +424,7 @@ export function HomeClient() {
       {PRODUCTS.map((p, idx) => (
         <section
           key={p.id}
+          className="reveal-section"
           style={{
             minHeight: "100vh",
             display: "flex",
@@ -364,6 +537,7 @@ export function HomeClient() {
       {/* ── ABOUT ─────────────────────────────────────────── */}
       <section
         id="about"
+        className="reveal-section"
         style={{
           padding: "120px clamp(32px, 8vw, 120px)",
           borderTop: "1px solid var(--border)",
@@ -413,6 +587,7 @@ export function HomeClient() {
       {/* ── JOIN US — masonry grid ─────────────────────────── */}
       <section
         id="join-us"
+        className="reveal-section"
         style={{
           padding: "100px clamp(32px, 8vw, 120px)",
           borderTop: "1px solid var(--border)",
@@ -491,6 +666,7 @@ export function HomeClient() {
       {/* ── CONTACT ───────────────────────────────────────── */}
       <section
         id="contact"
+        className="reveal-section"
         style={{
           padding: "80px clamp(32px, 8vw, 120px) 120px",
           borderTop: "1px solid var(--border)",

@@ -27,13 +27,13 @@ const syne = Syne({
 });
 
 export const metadata: Metadata = {
-  title: "株式会社SiiiD — 声と知識で、世界を変える。",
+  title: "株式会社SiiiD — 発信だけで生きていける、を当たり前に。",
   description:
     "株式会社SiiiDは、KoePassとSeebuyの2つのプラットフォームを運営しています。クリエイターとファンをつなぐボイスメッセージプラットフォーム「KoePass」と、知識を収益化する有料Q&Aプラットフォーム「Seebuy」。",
   keywords: ["KoePass", "Seebuy", "SiiiD", "ボイスメッセージ", "Q&A", "クリエイター"],
   openGraph: {
     title: "株式会社SiiiD",
-    description: "声と知識で、世界を変える。",
+    description: "発信だけで生きていける、を当たり前に。",
     locale: "ja_JP",
     type: "website",
   },
