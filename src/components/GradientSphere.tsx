@@ -234,46 +234,6 @@ const sphereFrag = /* glsl */ `
   }
 `;
 
-/* ════════════════════════════════════════════════════════════
-   Particle ring shaders
-   ════════════════════════════════════════════════════════════ */
-const particleVert = /* glsl */ `
-  uniform float uTime;
-  attribute float aAngle;
-  attribute float aRadius;
-  attribute float aSpeed;
-  attribute float aSize;
-
-  varying float vAlpha;
-
-  void main() {
-    float angle = aAngle + uTime * aSpeed;
-    vec3 pos = vec3(
-      cos(angle) * aRadius,
-      sin(angle * 0.3) * 0.3,
-      sin(angle) * aRadius
-    );
-
-    vec4 mvPos = modelViewMatrix * vec4(pos, 1.0);
-    gl_Position = projectionMatrix * mvPos;
-    gl_PointSize = aSize * (200.0 / -mvPos.z);
-
-    // Fade based on distance from camera
-    vAlpha = smoothstep(8.0, 3.0, -mvPos.z) * 0.6;
-  }
-`;
-
-const particleFrag = /* glsl */ `
-  varying float vAlpha;
-
-  void main() {
-    // Soft circle
-    float d = length(gl_PointCoord - 0.5) * 2.0;
-    float circle = 1.0 - smoothstep(0.5, 1.0, d);
-
-    gl_FragColor = vec4(vec3(0.95, 0.72, 0.88), circle * vAlpha);
-  }
-`;
 
 /* ════════════════════════════════════════════════════════════
    Component
@@ -339,80 +299,6 @@ export default function GradientSphere() {
     const sphere = new THREE.Mesh(sphereGeo, sphereMat);
     scene.add(sphere);
 
-    // ── Glow layer (slightly larger, additive) ──
-    const glowGeo = new THREE.IcosahedronGeometry(1.6, 32);
-    const glowMat = new THREE.ShaderMaterial({
-      vertexShader: /* glsl */ `
-        varying vec3 vNormal;
-        varying vec3 vViewPos;
-        void main() {
-          vNormal = normalMatrix * normal;
-          vViewPos = (modelViewMatrix * vec4(position, 1.0)).xyz;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: /* glsl */ `
-        uniform float uTime;
-        varying vec3 vNormal;
-        varying vec3 vViewPos;
-        void main() {
-          vec3 V = normalize(-vViewPos);
-          float fresnel = pow(1.0 - max(dot(V, normalize(vNormal)), 0.0), 4.0);
-
-          // Cycling glow color — pastel
-          float t = uTime * 0.10;
-          vec3 sakura = vec3(1.0, 0.62, 0.75);
-          vec3 lavender = vec3(0.72, 0.56, 0.95);
-          vec3 sky = vec3(0.55, 0.78, 1.0);
-          float cycle = mod(t, 3.0);
-          vec3 color;
-          if (cycle < 1.0) color = mix(sky, sakura, cycle);
-          else if (cycle < 2.0) color = mix(sakura, lavender, cycle - 1.0);
-          else color = mix(lavender, sky, cycle - 2.0);
-
-          gl_FragColor = vec4(color, fresnel * 0.25);
-        }
-      `,
-      uniforms: { uTime: sphereUniforms.uTime },
-      transparent: true,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-      side: THREE.BackSide,
-    });
-    const glow = new THREE.Mesh(glowGeo, glowMat);
-    scene.add(glow);
-
-    // ── Orbital particles ──
-    const particleCount = 200;
-    const angles = new Float32Array(particleCount);
-    const radii = new Float32Array(particleCount);
-    const speeds = new Float32Array(particleCount);
-    const sizes = new Float32Array(particleCount);
-
-    for (let i = 0; i < particleCount; i++) {
-      angles[i] = Math.random() * Math.PI * 2;
-      radii[i] = 2.0 + Math.random() * 1.5;
-      speeds[i] = 0.05 + Math.random() * 0.15;
-      sizes[i] = 1.0 + Math.random() * 3.0;
-    }
-
-    const particleGeo = new THREE.BufferGeometry();
-    particleGeo.setAttribute("position", new THREE.Float32BufferAttribute(new Float32Array(particleCount * 3), 3));
-    particleGeo.setAttribute("aAngle", new THREE.Float32BufferAttribute(angles, 1));
-    particleGeo.setAttribute("aRadius", new THREE.Float32BufferAttribute(radii, 1));
-    particleGeo.setAttribute("aSpeed", new THREE.Float32BufferAttribute(speeds, 1));
-    particleGeo.setAttribute("aSize", new THREE.Float32BufferAttribute(sizes, 1));
-
-    const particleMat = new THREE.ShaderMaterial({
-      vertexShader: particleVert,
-      fragmentShader: particleFrag,
-      uniforms: { uTime: sphereUniforms.uTime },
-      transparent: true,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-    });
-    const particles = new THREE.Points(particleGeo, particleMat);
-    scene.add(particles);
 
     // ── Tear sparkles (InstancedMesh — glass bubble spheres) ──
     const MAX_CHUNKS = 60;
@@ -693,9 +579,6 @@ export default function GradientSphere() {
       const rotSpeed = drag.strength > 0.1 ? 0.0003 : 0.0015;
       sphere.rotation.y += rotSpeed;
       sphere.rotation.x += rotSpeed * 0.5;
-      glow.rotation.y = sphere.rotation.y;
-      glow.rotation.x = sphere.rotation.x;
-      particles.rotation.y += 0.001;
 
       renderer.render(scene, camera);
     };
@@ -723,10 +606,6 @@ export default function GradientSphere() {
       renderer.dispose();
       sphereGeo.dispose();
       sphereMat.dispose();
-      glowGeo.dispose();
-      glowMat.dispose();
-      particleGeo.dispose();
-      particleMat.dispose();
       chunkGeo.dispose();
       chunkMat.dispose();
       chunks.dispose();
