@@ -230,15 +230,6 @@ p, li {
   50% { opacity: 1; transform: scaleY(1.2); }
 }
 
-/* Hero card hover */
-.hero-card:hover {
-  transform: translateY(-4px) !important;
-  box-shadow: 0 12px 40px rgba(14,22,49,0.12) !important;
-}
-.hero-card:hover span:last-child {
-  transform: translateX(4px);
-}
-
 /* Syne font utility */
 .font-syne {
   font-family: var(--font-syne), sans-serif;

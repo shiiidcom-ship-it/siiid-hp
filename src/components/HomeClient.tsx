@@ -93,7 +93,6 @@ export function HomeClient() {
     const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
     tl.to(hero.querySelector(".hero-label"), { opacity: 1, y: 0, duration: 0.8, delay: 0.1 })
       .to(hero.querySelector(".hero-sub"), { opacity: 1, y: 0, duration: 0.8 }, "-=0.3")
-      .to(hero.querySelector(".hero-ctas"), { opacity: 1, y: 0, duration: 0.8 }, "-=0.4")
       .to(hero.querySelector(".hero-scroll"), { opacity: 1, duration: 1 }, "-=0.3");
 
     return () => { tl.kill(); };
@@ -297,91 +296,6 @@ export function HomeClient() {
             声と知識で、発信者のマネタイズを支えるプラットフォームカンパニー。
           </p>
 
-          {/* 2-product CTA cards */}
-          <div
-            className="hero-ctas"
-            style={{
-              display: "flex",
-              gap: "16px",
-              justifyContent: "center",
-              flexWrap: "wrap",
-              opacity: 0,
-            }}
-          >
-            {PRODUCTS.map((p) => (
-              <Link
-                key={p.id}
-                href={p.href}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "12px",
-                  padding: "16px 28px",
-                  background: "rgba(255,255,255,0.75)",
-                  backdropFilter: "blur(20px)",
-                  WebkitBackdropFilter: "blur(20px)",
-                  border: `1px solid ${p.accent}30`,
-                  borderRadius: "16px",
-                  textDecoration: "none",
-                  transition: "all 0.3s cubic-bezier(0.16,1,0.3,1)",
-                  boxShadow: "0 4px 24px rgba(14,22,49,0.06)",
-                }}
-                className={`hero-card hero-card-${p.id}`}
-              >
-                <div
-                  style={{
-                    width: "36px",
-                    height: "36px",
-                    borderRadius: "10px",
-                    background: `linear-gradient(135deg, ${p.accent}, ${p.light})`,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "14px",
-                    fontWeight: "800",
-                    color: "white",
-                    fontFamily: "var(--font-syne)",
-                    flexShrink: 0,
-                  }}
-                >
-                  {p.name[0]}
-                </div>
-                <div style={{ textAlign: "left" }}>
-                  <div
-                    style={{
-                      fontFamily: "var(--font-syne)",
-                      fontSize: "14px",
-                      fontWeight: "700",
-                      color: "var(--text)",
-                      letterSpacing: "0.04em",
-                    }}
-                  >
-                    {p.name}
-                  </div>
-                  <div
-                    style={{
-                      fontFamily: "var(--font-sans)",
-                      fontSize: "11px",
-                      color: "var(--muted)",
-                      fontWeight: "300",
-                    }}
-                  >
-                    {p.tagline}
-                  </div>
-                </div>
-                <span
-                  style={{
-                    fontSize: "16px",
-                    color: p.accent,
-                    marginLeft: "8px",
-                    transition: "transform 0.3s",
-                  }}
-                >
-                  →
-                </span>
-              </Link>
-            ))}
-          </div>
         </div>
 
         {/* scroll indicator */}

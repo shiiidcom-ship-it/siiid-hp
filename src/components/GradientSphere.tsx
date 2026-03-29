@@ -106,22 +106,18 @@ const sphereVert = /* glsl */ `
 
     vec3 newPos = position + normal * disp;
 
-    // ── Drag stretching ──
-    // Vertices aligned with drag direction get pulled out
+    // ── Drag stretching (smooth, elegant) ──
     float dragDot = dot(normalize(position), uDragDir);
-    // Front-facing vertices: strong pull. Side: taper off for "neck" shape.
-    float pullMask = smoothstep(0.0, 1.0, dragDot); // 0 at back, 1 at front
-    float neckMask = pow(pullMask, 1.5); // sharper falloff = thinner neck
-    float stretch = neckMask * uDragStrength;
+    float pullMask = smoothstep(-0.2, 1.0, dragDot);
+    float stretch = pullMask * uDragStrength;
     vStretch = stretch;
 
-    // Pull the vertex outward along drag direction
+    // Smooth pull along drag direction
     newPos += uDragDir * stretch;
 
-    // Pinch the "neck" — vertices in the mid-range get squeezed inward
-    float midBand = smoothstep(0.2, 0.5, dragDot) * smoothstep(0.9, 0.6, dragDot);
-    float squeeze = midBand * uDragStrength * 0.3;
-    // Push perpendicular to drag dir, toward the axis
+    // Gentle taper (not a harsh neck pinch)
+    float taper = smoothstep(0.3, 0.6, dragDot) * smoothstep(0.95, 0.7, dragDot);
+    float squeeze = taper * uDragStrength * 0.12;
     vec3 radialDir = normalize(position - uDragDir * dot(position, uDragDir));
     newPos -= radialDir * squeeze;
 
@@ -195,12 +191,11 @@ const sphereFrag = /* glsl */ `
     // Displacement adds local hue variation
     baseColor = mix(baseColor, baseColor * 1.3, vDisplacement * 1.5);
 
-    // ── Stretch / tear effects ──
-    // Stretched areas glow hotter and become translucent
-    float stretchNorm = smoothstep(0.0, 1.5, vStretch);
-    // Shift color toward hot white/orange at extreme stretch
-    vec3 hotColor = vec3(1.0, 0.6, 0.3);
-    baseColor = mix(baseColor, hotColor, stretchNorm * 0.7);
+    // ── Stretch effects (crystalline glow) ──
+    float stretchNorm = smoothstep(0.0, 1.8, vStretch);
+    // Shift toward bright iridescent white at stretch
+    vec3 shimmer = vec3(0.85, 0.9, 1.0); // cool white-blue
+    baseColor = mix(baseColor, shimmer, stretchNorm * 0.5);
 
     // ── Lighting ──
     float wrap = max(dot(N, L) * 0.5 + 0.5, 0.0);
@@ -219,16 +214,19 @@ const sphereFrag = /* glsl */ `
 
     vec3 color = ambient + diffuse + specular + rim + subsurface;
 
-    // Add emissive glow at stretched areas
-    color += hotColor * stretchNorm * 0.5;
+    // Soft glow at stretched edges
+    color += shimmer * stretchNorm * 0.35;
 
-    // ── Alpha: tear apart at extreme stretch ──
+    // ── Alpha: elegant dissolve at extreme stretch ──
     float baseAlpha = 0.92 - fresnel * 0.12;
-    // Noise-based dissolution at the "neck"
-    float tearNoise = snoise(vOrigNormal * 8.0 + uTime) * 0.5 + 0.5;
-    float tearThreshold = smoothstep(0.5, 1.2, vStretch);
-    float tearAlpha = 1.0 - tearThreshold * step(tearNoise, tearThreshold);
-    float alpha = baseAlpha * mix(1.0, tearAlpha, step(0.01, uDragStrength));
+    // Smooth dissolve — sparkle edge, not harsh tear
+    float dissolveNoise = snoise(vOrigNormal * 6.0 + uTime * 0.5) * 0.5 + 0.5;
+    float dissolveEdge = smoothstep(0.6, 1.5, vStretch);
+    // Sparkle at the dissolve boundary
+    float sparkle = smoothstep(0.4, 0.5, dissolveNoise) * dissolveEdge;
+    color += vec3(1.0) * sparkle * 0.8;
+    float dissolveAlpha = 1.0 - smoothstep(0.0, 0.6, dissolveEdge - dissolveNoise * 0.5);
+    float alpha = baseAlpha * mix(1.0, dissolveAlpha, step(0.01, uDragStrength));
 
     gl_FragColor = vec4(color, alpha);
   }
@@ -414,20 +412,19 @@ export default function GradientSphere() {
     const particles = new THREE.Points(particleGeo, particleMat);
     scene.add(particles);
 
-    // ── Tear chunks (InstancedMesh) ──
+    // ── Tear sparkles (InstancedMesh — small glowing spheres) ──
     const MAX_CHUNKS = 60;
-    const chunkGeo = new THREE.IcosahedronGeometry(0.08, 2);
+    const chunkGeo = new THREE.IcosahedronGeometry(0.04, 1);
     const chunkMat = new THREE.MeshBasicMaterial({
       transparent: true,
       depthWrite: false,
+      blending: THREE.AdditiveBlending,
     });
     const chunks = new THREE.InstancedMesh(chunkGeo, chunkMat, MAX_CHUNKS);
     chunks.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    // Hide all initially
     const emptyMatrix = new THREE.Matrix4().makeScale(0, 0, 0);
     for (let i = 0; i < MAX_CHUNKS; i++) chunks.setMatrixAt(i, emptyMatrix);
     chunks.instanceMatrix.needsUpdate = true;
-    // Per-instance color
     const chunkColors = new Float32Array(MAX_CHUNKS * 3);
     chunks.instanceColor = new THREE.InstancedBufferAttribute(chunkColors, 3);
     scene.add(chunks);
@@ -475,32 +472,35 @@ export default function GradientSphere() {
         nextChunk++;
         c.alive = true;
         c.life = 0;
-        c.maxLife = 1.5 + Math.random() * 1.5;
-        c.scale = 0.5 + Math.random() * 1.5;
+        c.maxLife = 0.8 + Math.random() * 1.0; // shorter life — quick sparkle
+        c.scale = 0.8 + Math.random() * 2.0;
         c.rot = 0;
-        c.rotSpeed = (Math.random() - 0.5) * 12;
+        c.rotSpeed = (Math.random() - 0.5) * 8;
         c.rotAxis.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
 
-        // Spawn at the stretched tip of the sphere
-        const spread = 0.4;
-        c.pos.copy(dir).multiplyScalar(1.4 + strength * 0.5);
+        // Spawn at the stretched tip
+        const spread = 0.3;
+        c.pos.copy(dir).multiplyScalar(1.4 + strength * 0.4);
         c.pos.x += (Math.random() - 0.5) * spread;
         c.pos.y += (Math.random() - 0.5) * spread;
         c.pos.z += (Math.random() - 0.5) * spread;
 
-        // Velocity: outward along drag + random spread
-        const speed = 1.5 + Math.random() * 3;
-        c.vel.copy(dir).multiplyScalar(speed);
-        c.vel.x += (Math.random() - 0.5) * 2;
-        c.vel.y += (Math.random() - 0.5) * 2 + 1; // slight upward bias
-        c.vel.z += (Math.random() - 0.5) * 1;
+        // Light, floaty velocity — scatter outward gracefully
+        const speed = 2.0 + Math.random() * 4;
+        c.vel.copy(dir).multiplyScalar(speed * 0.5);
+        c.vel.x += (Math.random() - 0.5) * 3;
+        c.vel.y += Math.random() * 2; // float upward
+        c.vel.z += (Math.random() - 0.5) * 2;
 
+        // Bright, saturated brand colors
         c.color.copy(brandColors[Math.floor(Math.random() * brandColors.length)]);
+        // Brighten for additive glow
+        c.color.multiplyScalar(1.5);
       }
     }
 
     function updateChunks(dt: number) {
-      const gravity = -3.0;
+      const gravity = -0.8; // light gravity — float gracefully
       const dummy = new THREE.Matrix4();
       const quat = new THREE.Quaternion();
       const scaleVec = new THREE.Vector3();
@@ -519,27 +519,26 @@ export default function GradientSphere() {
           continue;
         }
 
-        // Physics
+        // Light physics — floaty
         c.vel.y += gravity * dt;
-        c.vel.multiplyScalar(0.995); // air drag
+        c.vel.multiplyScalar(0.98); // moderate air drag
         c.pos.addScaledVector(c.vel, dt);
         c.rot += c.rotSpeed * dt;
 
-        // Fade + shrink at end of life
+        // Smooth ease-out fade: start big, shrink gracefully
         const lifeRatio = c.life / c.maxLife;
-        const fadeScale = lifeRatio < 0.7 ? c.scale : c.scale * (1.0 - (lifeRatio - 0.7) / 0.3);
-        const s = Math.max(fadeScale, 0.01);
+        const easeOut = 1.0 - lifeRatio * lifeRatio; // quadratic ease-out
+        const s = Math.max(c.scale * easeOut, 0.01);
 
         quat.setFromAxisAngle(c.rotAxis, c.rot);
         scaleVec.set(s, s, s);
         dummy.compose(c.pos, quat, scaleVec);
         chunks.setMatrixAt(i, dummy);
 
-        // Color with alpha baked as brightness fade
-        const alpha = lifeRatio < 0.6 ? 1 : 1.0 - (lifeRatio - 0.6) / 0.4;
-        chunkColors[i * 3] = c.color.r * alpha;
-        chunkColors[i * 3 + 1] = c.color.g * alpha;
-        chunkColors[i * 3 + 2] = c.color.b * alpha;
+        // Brightness fades with easeOut (additive, so brightness = alpha)
+        chunkColors[i * 3] = c.color.r * easeOut;
+        chunkColors[i * 3 + 1] = c.color.g * easeOut;
+        chunkColors[i * 3 + 2] = c.color.b * easeOut;
       }
       chunks.instanceMatrix.needsUpdate = true;
       (chunks.instanceColor as THREE.InstancedBufferAttribute).needsUpdate = true;
