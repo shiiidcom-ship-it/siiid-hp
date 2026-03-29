@@ -194,7 +194,7 @@ const sphereFrag = /* glsl */ `
     baseColor = mix(baseColor, baseColor * 1.15 + vec3(0.08), vDisplacement * 1.2);
 
     // ── Stretch effects (crystalline glow) ──
-    float stretchNorm = smoothstep(0.0, 1.8, vStretch);
+    float stretchNorm = smoothstep(0.0, 0.8, vStretch);
     // Shift toward warm iridescent white at stretch
     vec3 shimmer = vec3(1.0, 0.92, 0.95); // warm pearl
     baseColor = mix(baseColor, shimmer, stretchNorm * 0.5);
@@ -223,7 +223,7 @@ const sphereFrag = /* glsl */ `
     float baseAlpha = 0.92 - fresnel * 0.12;
     // Smooth dissolve — sparkle edge, not harsh tear
     float dissolveNoise = snoise(vOrigNormal * 6.0 + uTime * 0.5) * 0.5 + 0.5;
-    float dissolveEdge = smoothstep(0.6, 1.5, vStretch);
+    float dissolveEdge = smoothstep(0.25, 0.8, vStretch);
     // Sparkle at the dissolve boundary
     float sparkle = smoothstep(0.4, 0.5, dissolveNoise) * dissolveEdge;
     color += vec3(1.0) * sparkle * 0.8;
@@ -563,14 +563,14 @@ export default function GradientSphere() {
       sphereUniforms.uDragStrength.value = drag.strength;
 
       // ── Emit chunks when stretched enough ──
-      if (drag.active && drag.strength > 1.0 && t - lastEmitTime > 0.08) {
-        const count = Math.floor(1 + (drag.strength - 1.0) * 2);
-        emitChunks(drag.dir, drag.strength, Math.min(count, 5));
+      if (drag.active && drag.strength > 0.3 && t - lastEmitTime > 0.06) {
+        const count = Math.floor(2 + drag.strength * 3);
+        emitChunks(drag.dir, drag.strength, Math.min(count, 8));
         lastEmitTime = t;
       }
       // Burst on release if was stretched
-      if (!drag.active && drag.strength > 0.8 && drag.velocity < -2) {
-        emitChunks(drag.dir, drag.strength, 8);
+      if (!drag.active && drag.strength > 0.3 && drag.velocity < -1) {
+        emitChunks(drag.dir, drag.strength, 12);
       }
 
       updateChunks(dt);
