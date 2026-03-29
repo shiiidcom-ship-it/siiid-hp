@@ -16,7 +16,7 @@ const PRODUCTS = [
     light: "#f472b6",
     tagline: "ボイスメッセージ特化プラットフォーム",
     headline: "メイクなし。\n準備なし。\n声だけで交流。",
-    body: "インスタライブより気軽に、ファンとつながれる。",
+    body: "インスタライブより気軽に、ファンとつながれる。手数料は売上の15%のみ（決済手数料込み）。それ以外の費用はゼロ。",
     cta: "無料で始める",
     href: "/koepass",
   },
@@ -28,7 +28,7 @@ const PRODUCTS = [
     tagline: "有料Q&Aプラットフォーム",
     headline: "フォロワーの\n「教えてください」に、\n値段がつく。",
     headlineSize: "clamp(24px, 3.8vw, 52px)",
-    body: "恋愛・美容整形・ビジネス・受験——Xの界隈で「この人に聞けば間違いない」と言われるあなたの知識、1回答ごとに収益になります。",
+    body: "恋愛・美容整形・ビジネス・受験——Xの界隈で「この人に聞けば間違いない」と言われるあなたの知識、1回答ごとに収益になります。回答者60%の高分配。",
     cta: "事前登録（無料）",
     href: "https://seebuy-lp-one.vercel.app/",
   },
@@ -115,7 +115,6 @@ export function HomeClient() {
 
     const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
     tl.to(hero.querySelector(".hero-label"), { opacity: 1, y: 0, duration: 0.8, delay: 0.1 })
-      .to(hero.querySelector(".hero-ctas"), { opacity: 1, y: 0, duration: 0.8 }, "-=0.1")
       .to(hero.querySelector(".hero-scroll"), { opacity: 1, duration: 1 }, "-=0.3");
 
     return () => { tl.kill(); };
@@ -213,10 +212,14 @@ export function HomeClient() {
           minHeight: "700px",
           overflow: "hidden",
           display: "flex",
+          flexDirection: "column",
           alignItems: "center",
-          padding: "0 clamp(32px, 8vw, 120px)",
+          justifyContent: "center",
         }}
       >
+        {/* Three.js sphere background */}
+        <GradientSphere />
+
         {/* giant SiiiD — watermark */}
         <div
           style={{
@@ -226,13 +229,13 @@ export function HomeClient() {
             lineHeight: "1",
             userSelect: "none",
             pointerEvents: "none",
-            zIndex: 0,
+            zIndex: 1,
           }}
         >
           <span
             style={{
               fontFamily: "var(--font-syne)",
-              fontSize: "clamp(100px, 18vw, 280px)",
+              fontSize: "clamp(120px, 22vw, 340px)",
               fontWeight: "800",
               color: "rgba(14,22,49,0.04)",
               letterSpacing: "-0.04em",
@@ -243,14 +246,15 @@ export function HomeClient() {
           </span>
         </div>
 
-        {/* left: text content */}
+        {/* center content */}
         <div
           className="hero-content"
           style={{
             position: "relative",
             zIndex: 2,
-            flex: "1 1 55%",
-            maxWidth: "600px",
+            textAlign: "center",
+            padding: "0 24px",
+            maxWidth: "900px",
           }}
         >
           {/* label */}
@@ -274,7 +278,7 @@ export function HomeClient() {
             text="発信だけで生きていける、"
             style={{
               fontFamily: "var(--font-mincho)",
-              fontSize: "clamp(26px, 4vw, 48px)",
+              fontSize: "clamp(28px, 5vw, 56px)",
               fontWeight: "800",
               color: "var(--text)",
               lineHeight: "1.4",
@@ -287,91 +291,19 @@ export function HomeClient() {
             text="を当たり前に。"
             style={{
               fontFamily: "var(--font-mincho)",
-              fontSize: "clamp(26px, 4vw, 48px)",
+              fontSize: "clamp(28px, 5vw, 56px)",
               fontWeight: "800",
               color: "var(--text)",
               lineHeight: "1.4",
               letterSpacing: "-0.01em",
-              margin: "0 0 40px",
+              margin: "0 0 20px",
             }}
             delay={0.8}
           />
 
-          {/* 2-product CTA cards */}
-          <div
-            className="hero-ctas"
-            style={{
-              display: "flex",
-              gap: "12px",
-              flexWrap: "wrap",
-              opacity: 0,
-            }}
-          >
-            {PRODUCTS.map((p) => (
-              <Link
-                key={p.id}
-                href={p.href}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "10px",
-                  padding: "12px 20px",
-                  background: "rgba(255,255,255,0.75)",
-                  backdropFilter: "blur(20px)",
-                  WebkitBackdropFilter: "blur(20px)",
-                  border: `1px solid ${p.accent}30`,
-                  borderRadius: "12px",
-                  textDecoration: "none",
-                  transition: "all 0.3s cubic-bezier(0.16,1,0.3,1)",
-                  boxShadow: "0 4px 24px rgba(14,22,49,0.06)",
-                }}
-                className={`hero-card hero-card-${p.id}`}
-              >
-                <div
-                  style={{
-                    width: "32px",
-                    height: "32px",
-                    borderRadius: "8px",
-                    background: `linear-gradient(135deg, ${p.accent}, ${p.light})`,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "12px",
-                    fontWeight: "800",
-                    color: "white",
-                    fontFamily: "var(--font-syne)",
-                    flexShrink: 0,
-                  }}
-                >
-                  {p.name[0]}
-                </div>
-                <div style={{ textAlign: "left" }}>
-                  <div style={{ fontFamily: "var(--font-syne)", fontSize: "13px", fontWeight: "700", color: "var(--text)", letterSpacing: "0.04em" }}>
-                    {p.name}
-                  </div>
-                  <div style={{ fontFamily: "var(--font-sans)", fontSize: "10px", color: "var(--muted)", fontWeight: "300" }}>
-                    {p.tagline}
-                  </div>
-                </div>
-                <span style={{ fontSize: "14px", color: p.accent, marginLeft: "4px", transition: "transform 0.3s" }}>→</span>
-              </Link>
-            ))}
-          </div>
-        </div>
+          {/* spacer between tagline and CTAs */}
+          <div style={{ height: "48px" }} />
 
-        {/* right: sphere */}
-        <div
-          className="hero-sphere"
-          style={{
-            position: "relative",
-            flex: "0 0 45%",
-            height: "60vh",
-            minHeight: "400px",
-            maxHeight: "600px",
-            zIndex: 1,
-          }}
-        >
-          <GradientSphere />
         </div>
 
         {/* scroll indicator */}
@@ -759,8 +691,6 @@ export function HomeClient() {
         .cta-btn-seebuy:hover  { background: rgba(22,163,74,0.08)  !important; }
         .cta-btn-joinus:hover  { background: rgba(14,22,49,0.06)   !important; }
         @media (max-width: 768px) {
-          .hero-sphere { display: none !important; }
-          .hero-content { flex: 1 1 100% !important; }
           .section-visual { display: none !important; }
           .masonry-grid-3 { grid-template-columns: repeat(2, 1fr) !important; }
         }
