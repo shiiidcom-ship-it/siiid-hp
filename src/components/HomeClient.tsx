@@ -44,7 +44,7 @@ const MASONRY_ITEMS = [
   { label: "キックオフ",         sub: "2025年4月",            span: 2, gradient: "linear-gradient(135deg,#a855f7,#ec4899)" },
 ];
 
-/* ── split-text reveal (CSS-only, no GSAP) ─────────────────── */
+/* ── split-text reveal (GSAP-powered) ──────────────────────── */
 function SplitTextReveal({
   text,
   style,
@@ -54,17 +54,40 @@ function SplitTextReveal({
   style?: React.CSSProperties;
   delay?: number;
 }) {
+  const ref = useRef<HTMLParagraphElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const chars = el.querySelectorAll<HTMLElement>(".split-char");
+
+    gsap.set(chars, { opacity: 0, y: 40, rotateX: -90, scale: 0.8 });
+
+    const tl = gsap.timeline({ delay });
+    tl.to(chars, {
+      opacity: 1,
+      y: 0,
+      rotateX: 0,
+      scale: 1,
+      duration: 0.8,
+      stagger: 0.04,
+      ease: "back.out(1.7)",
+    });
+
+    return () => { tl.kill(); };
+  }, [delay]);
+
   return (
-    <p style={{ ...style, perspective: "600px" }}>
+    <p ref={ref} style={{ ...style, perspective: "800px" }}>
       {text.split("").map((char, i) => (
         <span
           key={i}
+          className="split-char"
           style={{
             display: "inline-block",
             transformOrigin: "bottom center",
             opacity: 0,
-            animation: "charReveal 0.65s cubic-bezier(0.34,1.56,0.64,1) forwards",
-            animationDelay: `${delay + i * 0.035}s`,
+            willChange: "transform, opacity",
           }}
         >
           {char === " " ? "\u00A0" : char}
@@ -92,7 +115,6 @@ export function HomeClient() {
 
     const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
     tl.to(hero.querySelector(".hero-label"), { opacity: 1, y: 0, duration: 0.8, delay: 0.1 })
-      .to(hero.querySelector(".hero-sub"), { opacity: 1, y: 0, duration: 0.8 }, "-=0.3")
       .to(hero.querySelector(".hero-scroll"), { opacity: 1, duration: 1 }, "-=0.3");
 
     return () => { tl.kill(); };
@@ -279,22 +301,8 @@ export function HomeClient() {
             delay={0.8}
           />
 
-          {/* sub */}
-          <p
-            className="hero-sub"
-            style={{
-              fontFamily: "var(--font-sans)",
-              fontSize: "clamp(12px, 1.5vw, 15px)",
-              fontWeight: "300",
-              color: "rgba(14,22,49,0.45)",
-              lineHeight: "1.9",
-              letterSpacing: "0.04em",
-              margin: "0 0 48px",
-              opacity: 0,
-            }}
-          >
-            声と知識で、発信者のマネタイズを支えるプラットフォームカンパニー。
-          </p>
+          {/* spacer between tagline and CTAs */}
+          <div style={{ height: "48px" }} />
 
         </div>
 

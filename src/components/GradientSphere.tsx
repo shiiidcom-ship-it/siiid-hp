@@ -171,30 +171,32 @@ const sphereFrag = /* glsl */ `
     vec3 L = normalize(uLightPos - vWorldPos);
     vec3 H = normalize(L + V);
 
-    // ── Brand color palette ──
-    vec3 pink   = vec3(0.91, 0.27, 0.55);
-    vec3 blue   = vec3(0.18, 0.38, 0.92);
-    vec3 green  = vec3(0.13, 0.68, 0.38);
-    vec3 purple = vec3(0.55, 0.25, 0.85);
+    // ── Cute pastel palette ──
+    vec3 sakura  = vec3(1.0, 0.62, 0.75);   // cherry blossom pink
+    vec3 lavender = vec3(0.72, 0.56, 0.95);  // soft lavender
+    vec3 sky     = vec3(0.55, 0.78, 1.0);    // baby blue
+    vec3 mint    = vec3(0.55, 0.94, 0.82);   // mint green
+    vec3 peach   = vec3(1.0, 0.75, 0.62);    // soft peach
 
-    // Smooth 4-color cycling via position + time
-    float t = uTime * 0.12;
+    // Smooth 5-color cycling via position + time
+    float t = uTime * 0.10;
     float n = snoise(vOrigNormal * 2.0 + t) * 0.5 + 0.5;
-    float cycle = mod(t + n * 2.0, 4.0);
+    float cycle = mod(t + n * 2.5, 5.0);
 
     vec3 baseColor;
-    if (cycle < 1.0)      baseColor = mix(blue, pink, cycle);
-    else if (cycle < 2.0) baseColor = mix(pink, purple, cycle - 1.0);
-    else if (cycle < 3.0) baseColor = mix(purple, green, cycle - 2.0);
-    else                   baseColor = mix(green, blue, cycle - 3.0);
+    if (cycle < 1.0)      baseColor = mix(sakura, lavender, cycle);
+    else if (cycle < 2.0) baseColor = mix(lavender, sky, cycle - 1.0);
+    else if (cycle < 3.0) baseColor = mix(sky, mint, cycle - 2.0);
+    else if (cycle < 4.0) baseColor = mix(mint, peach, cycle - 3.0);
+    else                   baseColor = mix(peach, sakura, cycle - 4.0);
 
-    // Displacement adds local hue variation
-    baseColor = mix(baseColor, baseColor * 1.3, vDisplacement * 1.5);
+    // Displacement adds soft luminance variation
+    baseColor = mix(baseColor, baseColor * 1.15 + vec3(0.08), vDisplacement * 1.2);
 
     // ── Stretch effects (crystalline glow) ──
     float stretchNorm = smoothstep(0.0, 1.8, vStretch);
-    // Shift toward bright iridescent white at stretch
-    vec3 shimmer = vec3(0.85, 0.9, 1.0); // cool white-blue
+    // Shift toward warm iridescent white at stretch
+    vec3 shimmer = vec3(1.0, 0.92, 0.95); // warm pearl
     baseColor = mix(baseColor, shimmer, stretchNorm * 0.5);
 
     // ── Lighting ──
@@ -269,7 +271,7 @@ const particleFrag = /* glsl */ `
     float d = length(gl_PointCoord - 0.5) * 2.0;
     float circle = 1.0 - smoothstep(0.5, 1.0, d);
 
-    gl_FragColor = vec4(vec3(0.6, 0.7, 1.0), circle * vAlpha);
+    gl_FragColor = vec4(vec3(0.95, 0.72, 0.88), circle * vAlpha);
   }
 `;
 
@@ -357,16 +359,16 @@ export default function GradientSphere() {
           vec3 V = normalize(-vViewPos);
           float fresnel = pow(1.0 - max(dot(V, normalize(vNormal)), 0.0), 4.0);
 
-          // Cycling glow color
-          float t = uTime * 0.12;
-          vec3 pink = vec3(0.91, 0.27, 0.55);
-          vec3 blue = vec3(0.18, 0.38, 0.92);
-          vec3 green = vec3(0.13, 0.68, 0.38);
+          // Cycling glow color — pastel
+          float t = uTime * 0.10;
+          vec3 sakura = vec3(1.0, 0.62, 0.75);
+          vec3 lavender = vec3(0.72, 0.56, 0.95);
+          vec3 sky = vec3(0.55, 0.78, 1.0);
           float cycle = mod(t, 3.0);
           vec3 color;
-          if (cycle < 1.0) color = mix(blue, pink, cycle);
-          else if (cycle < 2.0) color = mix(pink, green, cycle - 1.0);
-          else color = mix(green, blue, cycle - 2.0);
+          if (cycle < 1.0) color = mix(sky, sakura, cycle);
+          else if (cycle < 2.0) color = mix(sakura, lavender, cycle - 1.0);
+          else color = mix(lavender, sky, cycle - 2.0);
 
           gl_FragColor = vec4(color, fresnel * 0.25);
         }
@@ -412,10 +414,40 @@ export default function GradientSphere() {
     const particles = new THREE.Points(particleGeo, particleMat);
     scene.add(particles);
 
-    // ── Tear sparkles (InstancedMesh — small glowing spheres) ──
+    // ── Tear sparkles (InstancedMesh — glass bubble spheres) ──
     const MAX_CHUNKS = 60;
-    const chunkGeo = new THREE.IcosahedronGeometry(0.04, 1);
-    const chunkMat = new THREE.MeshBasicMaterial({
+    const chunkGeo = new THREE.IcosahedronGeometry(0.05, 2);
+    const chunkMat = new THREE.ShaderMaterial({
+      vertexShader: /* glsl */ `
+        varying vec3 vNorm;
+        varying vec3 vViewPos;
+        void main() {
+          vNorm = normalMatrix * normal;
+          vec4 mv = modelViewMatrix * instanceMatrix * vec4(position, 1.0);
+          vViewPos = mv.xyz;
+          gl_Position = projectionMatrix * mv;
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        varying vec3 vNorm;
+        varying vec3 vViewPos;
+        void main() {
+          vec3 N = normalize(vNorm);
+          vec3 V = normalize(-vViewPos);
+          // Fresnel rim for glass/bubble look
+          float fresnel = pow(1.0 - max(dot(V, N), 0.0), 2.5);
+          // Iridescent shift
+          float iri = dot(N, vec3(0.0, 1.0, 0.0)) * 0.5 + 0.5;
+          vec3 col1 = vec3(1.0, 0.65, 0.82);  // sakura
+          vec3 col2 = vec3(0.7, 0.6, 1.0);    // lavender
+          vec3 col3 = vec3(0.6, 0.9, 1.0);    // sky
+          vec3 iriColor = mix(mix(col1, col2, iri), col3, fresnel);
+          // Core glow + rim highlight
+          vec3 color = iriColor * 0.6 + vec3(1.0) * fresnel * 0.9;
+          float alpha = 0.35 + fresnel * 0.65;
+          gl_FragColor = vec4(color, alpha);
+        }
+      `,
       transparent: true,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
@@ -458,12 +490,12 @@ export default function GradientSphere() {
     let lastEmitTime = 0;
 
     const brandColors = [
-      new THREE.Color(0xe8458c),
-      new THREE.Color(0x1d4ed8),
-      new THREE.Color(0x16a34a),
-      new THREE.Color(0x8b5cf6),
-      new THREE.Color(0xf472b6),
-      new THREE.Color(0x3b82f6),
+      new THREE.Color(0xffa0bf),  // sakura pink
+      new THREE.Color(0xb89ff5),  // lavender
+      new THREE.Color(0x8dc8ff),  // baby blue
+      new THREE.Color(0x8df0d2),  // mint
+      new THREE.Color(0xffc09f),  // peach
+      new THREE.Color(0xf5a0e6),  // orchid
     ];
 
     function emitChunks(dir: THREE.Vector3, strength: number, count: number) {
@@ -472,8 +504,8 @@ export default function GradientSphere() {
         nextChunk++;
         c.alive = true;
         c.life = 0;
-        c.maxLife = 0.8 + Math.random() * 1.0; // shorter life — quick sparkle
-        c.scale = 0.8 + Math.random() * 2.0;
+        c.maxLife = 1.2 + Math.random() * 1.5; // longer float
+        c.scale = 1.0 + Math.random() * 2.5;
         c.rot = 0;
         c.rotSpeed = (Math.random() - 0.5) * 8;
         c.rotAxis.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
@@ -485,22 +517,22 @@ export default function GradientSphere() {
         c.pos.y += (Math.random() - 0.5) * spread;
         c.pos.z += (Math.random() - 0.5) * spread;
 
-        // Light, floaty velocity — scatter outward gracefully
-        const speed = 2.0 + Math.random() * 4;
-        c.vel.copy(dir).multiplyScalar(speed * 0.5);
-        c.vel.x += (Math.random() - 0.5) * 3;
-        c.vel.y += Math.random() * 2; // float upward
-        c.vel.z += (Math.random() - 0.5) * 2;
+        // Soft, bubbly velocity — drift outward gently
+        const speed = 1.5 + Math.random() * 3;
+        c.vel.copy(dir).multiplyScalar(speed * 0.4);
+        c.vel.x += (Math.random() - 0.5) * 2;
+        c.vel.y += 0.5 + Math.random() * 2.5; // float upward like bubbles
+        c.vel.z += (Math.random() - 0.5) * 1.5;
 
         // Bright, saturated brand colors
         c.color.copy(brandColors[Math.floor(Math.random() * brandColors.length)]);
-        // Brighten for additive glow
-        c.color.multiplyScalar(1.5);
+        // Softer glow for pastel feel
+        c.color.multiplyScalar(1.2);
       }
     }
 
     function updateChunks(dt: number) {
-      const gravity = -0.8; // light gravity — float gracefully
+      const gravity = -0.4; // very light gravity — dreamy float
       const dummy = new THREE.Matrix4();
       const quat = new THREE.Quaternion();
       const scaleVec = new THREE.Vector3();
