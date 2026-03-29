@@ -981,15 +981,17 @@ function SeebuyVisual() {
       {/* revenue summary */}
       <div style={{
         background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "12px",
-        padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center",
+        padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center",
+        minWidth: "280px",
       }}>
-        <div>
-          <div style={{ fontSize: "9px", fontFamily: "var(--font-syne)", color: "var(--muted)", letterSpacing: "0.12em", marginBottom: "4px" }}>今月の収益</div>
-          <div style={{ fontSize: "20px", fontFamily: "var(--font-syne)", fontWeight: "800", color: "var(--text)" }}>¥48,000</div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: "9px", fontFamily: "var(--font-syne)", color: "var(--muted)", letterSpacing: "0.12em", marginBottom: "6px", whiteSpace: "nowrap" }}>今月の収益</div>
+          <div style={{ fontSize: "22px", fontFamily: "var(--font-syne)", fontWeight: "800", color: "var(--text)", whiteSpace: "nowrap" }}>¥48,000</div>
         </div>
-        <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: "9px", fontFamily: "var(--font-syne)", color: "var(--muted)", letterSpacing: "0.12em", marginBottom: "4px" }}>回答者の取り分</div>
-          <div style={{ fontSize: "20px", fontFamily: "var(--font-syne)", fontWeight: "800", color: "#22c55e" }}>60%</div>
+        <div style={{ width: "1px", height: "36px", background: "var(--border)", flexShrink: 0, margin: "0 16px" }} />
+        <div style={{ textAlign: "right", minWidth: 0 }}>
+          <div style={{ fontSize: "9px", fontFamily: "var(--font-syne)", color: "var(--muted)", letterSpacing: "0.12em", marginBottom: "6px", whiteSpace: "nowrap" }}>回答者の取り分</div>
+          <div style={{ fontSize: "22px", fontFamily: "var(--font-syne)", fontWeight: "800", color: "#22c55e", whiteSpace: "nowrap" }}>60%</div>
         </div>
       </div>
     </div>
