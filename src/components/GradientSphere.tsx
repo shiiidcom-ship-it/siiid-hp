@@ -74,12 +74,15 @@ const sphereVert = /* glsl */ `
   uniform float uTime;
   uniform vec2  uMouse;
   uniform float uHover;
+  uniform vec3  uDragDir;
+  uniform float uDragStrength;
 
   varying vec3 vNormal;
   varying vec3 vWorldPos;
   varying vec3 vViewPos;
   varying float vDisplacement;
   varying vec3 vOrigNormal;
+  varying float vStretch;
 
   ${noiseGLSL}
 
@@ -102,6 +105,25 @@ const sphereVert = /* glsl */ `
     vOrigNormal = normal;
 
     vec3 newPos = position + normal * disp;
+
+    // ── Drag stretching ──
+    // Vertices aligned with drag direction get pulled out
+    float dragDot = dot(normalize(position), uDragDir);
+    // Front-facing vertices: strong pull. Side: taper off for "neck" shape.
+    float pullMask = smoothstep(0.0, 1.0, dragDot); // 0 at back, 1 at front
+    float neckMask = pow(pullMask, 1.5); // sharper falloff = thinner neck
+    float stretch = neckMask * uDragStrength;
+    vStretch = stretch;
+
+    // Pull the vertex outward along drag direction
+    newPos += uDragDir * stretch;
+
+    // Pinch the "neck" — vertices in the mid-range get squeezed inward
+    float midBand = smoothstep(0.2, 0.5, dragDot) * smoothstep(0.9, 0.6, dragDot);
+    float squeeze = midBand * uDragStrength * 0.3;
+    // Push perpendicular to drag dir, toward the axis
+    vec3 radialDir = normalize(position - uDragDir * dot(position, uDragDir));
+    newPos -= radialDir * squeeze;
 
     // Compute displaced normal via finite differences
     float eps = 0.001;
@@ -136,12 +158,14 @@ const sphereVert = /* glsl */ `
 const sphereFrag = /* glsl */ `
   uniform float uTime;
   uniform vec3  uLightPos;
+  uniform float uDragStrength;
 
   varying vec3 vNormal;
   varying vec3 vWorldPos;
   varying vec3 vViewPos;
   varying float vDisplacement;
   varying vec3 vOrigNormal;
+  varying float vStretch;
 
   ${noiseGLSL}
 
@@ -171,32 +195,40 @@ const sphereFrag = /* glsl */ `
     // Displacement adds local hue variation
     baseColor = mix(baseColor, baseColor * 1.3, vDisplacement * 1.5);
 
+    // ── Stretch / tear effects ──
+    // Stretched areas glow hotter and become translucent
+    float stretchNorm = smoothstep(0.0, 1.5, vStretch);
+    // Shift color toward hot white/orange at extreme stretch
+    vec3 hotColor = vec3(1.0, 0.6, 0.3);
+    baseColor = mix(baseColor, hotColor, stretchNorm * 0.7);
+
     // ── Lighting ──
-    // Diffuse (warm)
-    float diff = max(dot(N, L), 0.0);
-    float wrap = max(dot(N, L) * 0.5 + 0.5, 0.0); // wrap lighting
+    float wrap = max(dot(N, L) * 0.5 + 0.5, 0.0);
     vec3 diffuse = baseColor * wrap * 0.85;
 
-    // Specular (Blinn-Phong, tight highlight)
     float spec = pow(max(dot(N, H), 0.0), 64.0);
     vec3 specular = vec3(1.0) * spec * 0.6;
 
-    // Fresnel rim
     float fresnel = pow(1.0 - max(dot(V, N), 0.0), 3.5);
     vec3 rim = mix(baseColor * 1.5, vec3(1.0), 0.5) * fresnel * 0.55;
 
-    // Ambient
     vec3 ambient = baseColor * 0.15;
 
-    // Subsurface scattering approximation
     float sss = pow(max(dot(V, -L), 0.0), 2.0) * 0.15;
     vec3 subsurface = baseColor * sss;
 
-    // Compose
     vec3 color = ambient + diffuse + specular + rim + subsurface;
 
-    // Soft alpha falloff at silhouette
-    float alpha = 0.92 - fresnel * 0.12;
+    // Add emissive glow at stretched areas
+    color += hotColor * stretchNorm * 0.5;
+
+    // ── Alpha: tear apart at extreme stretch ──
+    float baseAlpha = 0.92 - fresnel * 0.12;
+    // Noise-based dissolution at the "neck"
+    float tearNoise = snoise(vOrigNormal * 8.0 + uTime) * 0.5 + 0.5;
+    float tearThreshold = smoothstep(0.5, 1.2, vStretch);
+    float tearAlpha = 1.0 - tearThreshold * step(tearNoise, tearThreshold);
+    float alpha = baseAlpha * mix(1.0, tearAlpha, step(0.01, uDragStrength));
 
     gl_FragColor = vec4(color, alpha);
   }
@@ -250,6 +282,13 @@ export default function GradientSphere() {
   const containerRef = useRef<HTMLDivElement>(null);
   const mouseRef = useRef({ x: 0, y: 0 });
   const hoverRef = useRef(0);
+  const dragRef = useRef({
+    active: false,
+    dir: new THREE.Vector3(0, 0, 1),   // drag direction (world)
+    strength: 0,                         // current spring value
+    velocity: 0,                         // spring velocity
+    target: 0,                           // target strength (0 when released)
+  });
 
   useEffect(() => {
     const container = containerRef.current;
@@ -287,6 +326,8 @@ export default function GradientSphere() {
       uMouse: { value: new THREE.Vector2(0, 0) },
       uHover: { value: 0 },
       uLightPos: { value: new THREE.Vector3(3, 4, 5) },
+      uDragDir: { value: new THREE.Vector3(0, 0, 1) },
+      uDragStrength: { value: 0 },
     };
     const sphereMat = new THREE.ShaderMaterial({
       vertexShader: sphereVert,
@@ -373,16 +414,65 @@ export default function GradientSphere() {
     const particles = new THREE.Points(particleGeo, particleMat);
     scene.add(particles);
 
-    // ── Mouse tracking ──
+    // ── Raycaster for drag detection ──
+    const raycaster = new THREE.Raycaster();
+    const mouseNDC = new THREE.Vector2();
+
+    // ── Mouse tracking + drag ──
     const onMouseMove = (e: MouseEvent) => {
       mouseRef.current.x = (e.clientX / window.innerWidth) * 2 - 1;
       mouseRef.current.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+      if (dragRef.current.active) {
+        // Update drag direction based on current mouse vs sphere center
+        mouseNDC.set(mouseRef.current.x, mouseRef.current.y);
+        raycaster.setFromCamera(mouseNDC, camera);
+        // Project mouse to a plane at z=0 to get world-space drag target
+        const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+        const target = new THREE.Vector3();
+        raycaster.ray.intersectPlane(plane, target);
+        if (target) {
+          const dir = target.clone().sub(sphere.position).normalize();
+          dragRef.current.dir.copy(dir);
+          // Strength based on distance from sphere center
+          const dist = target.distanceTo(sphere.position);
+          dragRef.current.target = Math.min(dist * 0.8, 3.0);
+        }
+      }
     };
     const onMouseEnter = () => { hoverRef.current = 1; };
-    const onMouseLeave = () => { hoverRef.current = 0; };
+    const onMouseLeave = () => {
+      hoverRef.current = 0;
+      dragRef.current.active = false;
+      dragRef.current.target = 0;
+    };
+
+    const onMouseDown = (e: MouseEvent) => {
+      mouseNDC.set(
+        (e.clientX / window.innerWidth) * 2 - 1,
+        -(e.clientY / window.innerHeight) * 2 + 1
+      );
+      raycaster.setFromCamera(mouseNDC, camera);
+      const hits = raycaster.intersectObject(sphere);
+      if (hits.length > 0) {
+        dragRef.current.active = true;
+        // Initial drag direction from hit point
+        const hitDir = hits[0].point.clone().sub(sphere.position).normalize();
+        dragRef.current.dir.copy(hitDir);
+        dragRef.current.target = 0.1;
+        e.preventDefault();
+      }
+    };
+    const onMouseUp = () => {
+      dragRef.current.active = false;
+      dragRef.current.target = 0; // spring back
+    };
+
     window.addEventListener("mousemove", onMouseMove, { passive: true });
     container.addEventListener("mouseenter", onMouseEnter);
     container.addEventListener("mouseleave", onMouseLeave);
+    container.addEventListener("mousedown", onMouseDown);
+    window.addEventListener("mouseup", onMouseUp);
 
     // ── Render loop (30fps cap) ──
     let animId: number;
@@ -408,9 +498,26 @@ export default function GradientSphere() {
       sphereUniforms.uLightPos.value.x = 3 + mx * 2;
       sphereUniforms.uLightPos.value.y = 4 + my * 2;
 
-      // Gentle rotation
-      sphere.rotation.y += 0.0015;
-      sphere.rotation.x += 0.0008;
+      // ── Spring physics for drag ──
+      const drag = dragRef.current;
+      const springK = 12;    // stiffness
+      const damping = 4;     // damping ratio
+      const dt = 1 / 30;
+      const force = (drag.target - drag.strength) * springK;
+      drag.velocity += (force - drag.velocity * damping) * dt;
+      drag.strength += drag.velocity * dt;
+      // Clamp tiny values to zero
+      if (Math.abs(drag.strength) < 0.001 && Math.abs(drag.velocity) < 0.001) {
+        drag.strength = 0;
+        drag.velocity = 0;
+      }
+      sphereUniforms.uDragDir.value.copy(drag.dir);
+      sphereUniforms.uDragStrength.value = drag.strength;
+
+      // Gentle rotation (slow down during drag)
+      const rotSpeed = drag.strength > 0.1 ? 0.0003 : 0.0015;
+      sphere.rotation.y += rotSpeed;
+      sphere.rotation.x += rotSpeed * 0.5;
       glow.rotation.y = sphere.rotation.y;
       glow.rotation.x = sphere.rotation.x;
       particles.rotation.y += 0.001;
@@ -433,9 +540,11 @@ export default function GradientSphere() {
     return () => {
       cancelAnimationFrame(animId);
       window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
       window.removeEventListener("resize", onResize);
       container.removeEventListener("mouseenter", onMouseEnter);
       container.removeEventListener("mouseleave", onMouseLeave);
+      container.removeEventListener("mousedown", onMouseDown);
       renderer.dispose();
       sphereGeo.dispose();
       sphereMat.dispose();
@@ -457,6 +566,7 @@ export default function GradientSphere() {
         inset: 0,
         zIndex: 0,
         pointerEvents: "auto",
+        cursor: "grab",
       }}
     />
   );

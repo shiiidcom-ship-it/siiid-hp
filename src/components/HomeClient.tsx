@@ -27,6 +27,7 @@ const PRODUCTS = [
     light: "#22c55e",
     tagline: "有料Q&Aプラットフォーム",
     headline: "フォロワーの\n「教えてください」に、\n値段がつく。",
+    headlineSize: "clamp(24px, 3.8vw, 52px)",
     body: "恋愛・美容整形・ビジネス・受験——Xの界隈で「この人に聞けば間違いない」と言われるあなたの知識、1回答ごとに収益になります。回答者60%の高分配。",
     cta: "事前登録（無料）",
     href: "https://seebuy-lp-one.vercel.app/",
@@ -468,7 +469,7 @@ export function HomeClient() {
             <h2
               style={{
                 fontFamily: "var(--font-mincho)",
-                fontSize: "clamp(32px, 5vw, 72px)",
+                fontSize: p.headlineSize ?? "clamp(32px, 5vw, 72px)",
                 fontWeight: "800",
                 color: "var(--text)",
                 lineHeight: "1.25",
