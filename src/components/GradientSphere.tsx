@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import * as THREE from "three";
+import {
+  WebGLRenderer, Scene, PerspectiveCamera,
+  IcosahedronGeometry, ShaderMaterial, Mesh,
+  InstancedMesh, InstancedBufferAttribute,
+  Matrix4, Vector2, Vector3, Quaternion, Color,
+  Raycaster, Plane,
+  AdditiveBlending,
+  ACESFilmicToneMapping, DynamicDrawUsage,
+} from "three";
 
 /* ════════════════════════════════════════════════════════════
    Shared GLSL: Simplex 3D noise + FBM
@@ -244,7 +252,7 @@ export default function GradientSphere() {
   const hoverRef = useRef(0);
   const dragRef = useRef({
     active: false,
-    dir: new THREE.Vector3(0, 0, 1),   // drag direction (world)
+    dir: new Vector3(0, 0, 1),   // drag direction (world)
     strength: 0,                         // current spring value
     velocity: 0,                         // spring velocity
     target: 0,                           // target strength (0 when released)
@@ -257,7 +265,7 @@ export default function GradientSphere() {
     const dpr = Math.min(window.devicePixelRatio, 1.5);
 
     // ── Renderer ──
-    const renderer = new THREE.WebGLRenderer({
+    const renderer = new WebGLRenderer({
       alpha: true,
       antialias: true,
       powerPreference: "default",
@@ -265,13 +273,13 @@ export default function GradientSphere() {
     renderer.setPixelRatio(dpr);
     renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.setClearColor(0x000000, 0);
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMapping = ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.2;
     container.appendChild(renderer.domElement);
 
     // ── Scene & Camera ──
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(
+    const scene = new Scene();
+    const camera = new PerspectiveCamera(
       40,
       container.clientWidth / container.clientHeight,
       0.1,
@@ -280,30 +288,30 @@ export default function GradientSphere() {
     camera.position.z = 5;
 
     // ── Main sphere ──
-    const sphereGeo = new THREE.IcosahedronGeometry(1.4, 128);
+    const sphereGeo = new IcosahedronGeometry(1.4, 64);
     const sphereUniforms = {
       uTime: { value: 0 },
-      uMouse: { value: new THREE.Vector2(0, 0) },
+      uMouse: { value: new Vector2(0, 0) },
       uHover: { value: 0 },
-      uLightPos: { value: new THREE.Vector3(3, 4, 5) },
-      uDragDir: { value: new THREE.Vector3(0, 0, 1) },
+      uLightPos: { value: new Vector3(3, 4, 5) },
+      uDragDir: { value: new Vector3(0, 0, 1) },
       uDragStrength: { value: 0 },
     };
-    const sphereMat = new THREE.ShaderMaterial({
+    const sphereMat = new ShaderMaterial({
       vertexShader: sphereVert,
       fragmentShader: sphereFrag,
       uniforms: sphereUniforms,
       transparent: true,
       depthWrite: false,
     });
-    const sphere = new THREE.Mesh(sphereGeo, sphereMat);
+    const sphere = new Mesh(sphereGeo, sphereMat);
     scene.add(sphere);
 
 
     // ── Tear sparkles (InstancedMesh — glass bubble spheres) ──
     const MAX_CHUNKS = 60;
-    const chunkGeo = new THREE.IcosahedronGeometry(0.05, 2);
-    const chunkMat = new THREE.ShaderMaterial({
+    const chunkGeo = new IcosahedronGeometry(0.05, 2);
+    const chunkMat = new ShaderMaterial({
       vertexShader: /* glsl */ `
         varying vec3 vNorm;
         varying vec3 vViewPos;
@@ -336,55 +344,55 @@ export default function GradientSphere() {
       `,
       transparent: true,
       depthWrite: false,
-      blending: THREE.AdditiveBlending,
+      blending: AdditiveBlending,
     });
-    const chunks = new THREE.InstancedMesh(chunkGeo, chunkMat, MAX_CHUNKS);
-    chunks.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    const emptyMatrix = new THREE.Matrix4().makeScale(0, 0, 0);
+    const chunks = new InstancedMesh(chunkGeo, chunkMat, MAX_CHUNKS);
+    chunks.instanceMatrix.setUsage(DynamicDrawUsage);
+    const emptyMatrix = new Matrix4().makeScale(0, 0, 0);
     for (let i = 0; i < MAX_CHUNKS; i++) chunks.setMatrixAt(i, emptyMatrix);
     chunks.instanceMatrix.needsUpdate = true;
     const chunkColors = new Float32Array(MAX_CHUNKS * 3);
-    chunks.instanceColor = new THREE.InstancedBufferAttribute(chunkColors, 3);
+    chunks.instanceColor = new InstancedBufferAttribute(chunkColors, 3);
     scene.add(chunks);
 
     // Chunk state
     interface ChunkState {
       alive: boolean;
-      pos: THREE.Vector3;
-      vel: THREE.Vector3;
-      rotAxis: THREE.Vector3;
+      pos: Vector3;
+      vel: Vector3;
+      rotAxis: Vector3;
       rotSpeed: number;
       rot: number;
       scale: number;
       life: number;       // 0→1, dies at 1
       maxLife: number;
-      color: THREE.Color;
+      color: Color;
     }
     const chunkPool: ChunkState[] = Array.from({ length: MAX_CHUNKS }, () => ({
       alive: false,
-      pos: new THREE.Vector3(),
-      vel: new THREE.Vector3(),
-      rotAxis: new THREE.Vector3(1, 0, 0),
+      pos: new Vector3(),
+      vel: new Vector3(),
+      rotAxis: new Vector3(1, 0, 0),
       rotSpeed: 0,
       rot: 0,
       scale: 1,
       life: 1,
       maxLife: 1,
-      color: new THREE.Color(),
+      color: new Color(),
     }));
     let nextChunk = 0;
     let lastEmitTime = 0;
 
     const brandColors = [
-      new THREE.Color(0xffa0bf),  // sakura pink
-      new THREE.Color(0xb89ff5),  // lavender
-      new THREE.Color(0x8dc8ff),  // baby blue
-      new THREE.Color(0x8df0d2),  // mint
-      new THREE.Color(0xffc09f),  // peach
-      new THREE.Color(0xf5a0e6),  // orchid
+      new Color(0xffa0bf),  // sakura pink
+      new Color(0xb89ff5),  // lavender
+      new Color(0x8dc8ff),  // baby blue
+      new Color(0x8df0d2),  // mint
+      new Color(0xffc09f),  // peach
+      new Color(0xf5a0e6),  // orchid
     ];
 
-    function emitChunks(dir: THREE.Vector3, strength: number, count: number) {
+    function emitChunks(dir: Vector3, strength: number, count: number) {
       for (let i = 0; i < count; i++) {
         const c = chunkPool[nextChunk % MAX_CHUNKS];
         nextChunk++;
@@ -419,9 +427,9 @@ export default function GradientSphere() {
 
     function updateChunks(dt: number) {
       const gravity = -0.4; // very light gravity — dreamy float
-      const dummy = new THREE.Matrix4();
-      const quat = new THREE.Quaternion();
-      const scaleVec = new THREE.Vector3();
+      const dummy = new Matrix4();
+      const quat = new Quaternion();
+      const scaleVec = new Vector3();
 
       for (let i = 0; i < MAX_CHUNKS; i++) {
         const c = chunkPool[i];
@@ -459,12 +467,12 @@ export default function GradientSphere() {
         chunkColors[i * 3 + 2] = c.color.b * easeOut;
       }
       chunks.instanceMatrix.needsUpdate = true;
-      (chunks.instanceColor as THREE.InstancedBufferAttribute).needsUpdate = true;
+      (chunks.instanceColor as InstancedBufferAttribute).needsUpdate = true;
     }
 
     // ── Raycaster for drag detection ──
-    const raycaster = new THREE.Raycaster();
-    const mouseNDC = new THREE.Vector2();
+    const raycaster = new Raycaster();
+    const mouseNDC = new Vector2();
 
     // ── Mouse tracking + drag ──
     const onMouseMove = (e: MouseEvent) => {
@@ -476,8 +484,8 @@ export default function GradientSphere() {
         mouseNDC.set(mouseRef.current.x, mouseRef.current.y);
         raycaster.setFromCamera(mouseNDC, camera);
         // Project mouse to a plane at z=0 to get world-space drag target
-        const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
-        const target = new THREE.Vector3();
+        const plane = new Plane(new Vector3(0, 0, 1), 0);
+        const target = new Vector3();
         raycaster.ray.intersectPlane(plane, target);
         if (target) {
           const dir = target.clone().sub(sphere.position).normalize();

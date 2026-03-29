@@ -110,9 +110,9 @@ export function WebGLShader() {
     }
 
     const handleResize = () => {
-      if (!refs.renderer || !refs.uniforms) return
-      const width = window.innerWidth
-      const height = window.innerHeight
+      if (!refs.renderer || !refs.uniforms || !canvas.parentElement) return
+      const width = canvas.parentElement.clientWidth || window.innerWidth
+      const height = canvas.parentElement.clientHeight || window.innerHeight
       refs.renderer.setSize(width, height, false)
       refs.uniforms.resolution.value = [width, height]
     }
@@ -138,7 +138,7 @@ export function WebGLShader() {
   return (
     <canvas
       ref={canvasRef}
-      className="fixed top-0 left-0 w-full h-full block"
+      className="absolute top-0 left-0 w-full h-full block"
     />
   )
 }

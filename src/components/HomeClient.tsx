@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import gsap from "gsap";
 
 const GradientSphere = dynamic(() => import("./GradientSphere"), { ssr: false });
+const WebGLShaderBg = dynamic(() => import("@/components/ui/web-gl-shader").then(m => ({ default: m.WebGLShader })), { ssr: false });
 
 /* ── product data ─────────────────────────────────────────── */
 const PRODUCTS = [
@@ -35,7 +35,7 @@ const PRODUCTS = [
 ];
 
 
-/* ── split-text reveal (GSAP-powered) ──────────────────────── */
+/* ── split-text reveal (CSS animation) ─────────────────────── */
 function SplitTextReveal({
   text,
   style,
@@ -45,31 +45,8 @@ function SplitTextReveal({
   style?: React.CSSProperties;
   delay?: number;
 }) {
-  const ref = useRef<HTMLParagraphElement>(null);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const chars = el.querySelectorAll<HTMLElement>(".split-char");
-
-    gsap.set(chars, { opacity: 0, y: 40, rotateX: -90, scale: 0.8 });
-
-    const tl = gsap.timeline({ delay });
-    tl.to(chars, {
-      opacity: 1,
-      y: 0,
-      rotateX: 0,
-      scale: 1,
-      duration: 0.8,
-      stagger: 0.04,
-      ease: "back.out(1.7)",
-    });
-
-    return () => { tl.kill(); };
-  }, [delay]);
-
   return (
-    <p ref={ref} style={{ ...style, perspective: "800px" }}>
+    <p style={{ ...style, perspective: "800px" }}>
       {text.split("").map((char, i) => (
         <span
           key={i}
@@ -78,7 +55,8 @@ function SplitTextReveal({
             display: "inline-block",
             transformOrigin: "bottom center",
             opacity: 0,
-            willChange: "transform, opacity",
+            animation: `splitCharIn 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards`,
+            animationDelay: `${delay + i * 0.04}s`,
           }}
         >
           {char === " " ? "\u00A0" : char}
@@ -91,7 +69,7 @@ function SplitTextReveal({
 /* ── main component ───────────────────────────────────────── */
 export function HomeClient() {
   const [scrolled, setScrolled] = useState(false);
-  const heroRef = useRef<HTMLElement>(null);
+
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 60);
@@ -99,38 +77,22 @@ export function HomeClient() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  /* ── GSAP hero entrance timeline ── */
-  useEffect(() => {
-    const hero = heroRef.current;
-    if (!hero) return;
-
-    const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
-    tl.to(hero.querySelector(".hero-scroll"), { opacity: 1, duration: 1, delay: 1.5 });
-
-    return () => { tl.kill(); };
-  }, []);
-
-  /* ── GSAP scroll-triggered section reveals ── */
+  /* ── CSS-based scroll-triggered section reveals ── */
   useEffect(() => {
     const sections = document.querySelectorAll<HTMLElement>(".reveal-section");
-    const observers: IntersectionObserver[] = [];
-
-    sections.forEach((section) => {
-      gsap.set(section, { opacity: 0, y: 60 });
-      const observer = new IntersectionObserver(
-        ([entry]) => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            gsap.to(section, { opacity: 1, y: 0, duration: 1, ease: "power3.out" });
-            observer.unobserve(section);
+            (entry.target as HTMLElement).classList.add("visible");
+            observer.unobserve(entry.target);
           }
-        },
-        { threshold: 0.15 }
-      );
-      observer.observe(section);
-      observers.push(observer);
-    });
-
-    return () => observers.forEach((o) => o.disconnect());
+        });
+      },
+      { threshold: 0.15 }
+    );
+    sections.forEach((s) => observer.observe(s));
+    return () => observer.disconnect();
   }, []);
 
   return (
@@ -195,7 +157,6 @@ export function HomeClient() {
 
       {/* ── HERO ─────────────────────────────────────────── */}
       <section
-        ref={heroRef}
         style={{
           position: "relative",
           height: "100vh",
@@ -207,7 +168,12 @@ export function HomeClient() {
           justifyContent: "center",
         }}
       >
-        {/* Three.js sphere background */}
+        {/* WebGL shader background */}
+        <div style={{ position: "absolute", inset: 0, zIndex: 0, opacity: 0.35 }}>
+          <WebGLShaderBg />
+        </div>
+
+        {/* Three.js sphere */}
         <GradientSphere />
 
         {/* giant SiiiD — watermark */}
@@ -282,7 +248,6 @@ export function HomeClient() {
 
         {/* scroll indicator */}
         <div
-          className="hero-scroll"
           style={{
             position: "absolute",
             bottom: "40px",
@@ -293,6 +258,7 @@ export function HomeClient() {
             alignItems: "center",
             gap: "8px",
             opacity: 0,
+            animation: "fadeIn 1s ease forwards 1.5s",
             zIndex: 2,
           }}
         >
