@@ -31,9 +31,14 @@ export const metadata: Metadata = {
   description:
     "株式会社SiiiDは、KoePassとSeebuyの2つのプラットフォームを運営しています。クリエイターとファンをつなぐボイスメッセージプラットフォーム「KoePass」と、知識を収益化する有料Q&Aプラットフォーム「Seebuy」。",
   keywords: ["KoePass", "Seebuy", "SiiiD", "ボイスメッセージ", "Q&A", "クリエイター"],
+  icons: {
+    icon: "/logo-transparent.png",
+    apple: "/logo.png",
+  },
   openGraph: {
     title: "株式会社SiiiD",
     description: "発信だけで生きていける、を当たり前に。",
+    images: [{ url: "/logo.png", width: 1200, height: 630 }],
     locale: "ja_JP",
     type: "website",
   },

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState, useEffect } from "react";
 
 interface SiteHeaderProps {
@@ -50,36 +51,8 @@ export default function SiteHeader({ variant = "home" }: SiteHeaderProps) {
         }}
       >
         {/* Logo */}
-        <Link href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: "10px" }}>
-          <div
-            style={{
-              width: "32px",
-              height: "32px",
-              background: `linear-gradient(135deg, ${accentColor}, #1d4ed8)`,
-              borderRadius: "8px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "14px",
-              fontWeight: "800",
-              color: "white",
-              letterSpacing: "-0.5px",
-              fontFamily: "var(--font-syne)",
-            }}
-          >
-            S
-          </div>
-          <span
-            style={{
-              fontFamily: "var(--font-syne)",
-              fontWeight: "700",
-              fontSize: "16px",
-              color: "var(--text)",
-              letterSpacing: "0.05em",
-            }}
-          >
-            SiiiD
-          </span>
+        <Link href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center" }}>
+          <Image src="/logo-transparent.png" alt="SiiiD" width={120} height={40} style={{ objectFit: "contain" }} priority />
         </Link>
 
         {/* Desktop Nav */}

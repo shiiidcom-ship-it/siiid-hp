@@ -481,23 +481,6 @@ export function HomeClient() {
             適切に届け、新しい経済圏を生み出すことが私たちの使命です。
           </p>
 
-          {/* company info table */}
-          <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "var(--font-sans)", fontSize: "14px" }}>
-            <tbody>
-              {[
-                ["会社名", "株式会社SiiiD"],
-                ["設立", "2025年4月"],
-                ["代表", "石井 一真"],
-                ["所在地", "東京都渋谷区"],
-                ["事業内容", "KoePass（ボイスメッセージプラットフォーム）、Seebuy（有料Q&Aプラットフォーム）の企画・開発・運営"],
-              ].map(([label, value]) => (
-                <tr key={label} style={{ borderBottom: "1px solid var(--border)" }}>
-                  <td style={{ padding: "16px 0", color: "var(--muted)", fontWeight: "300", width: "120px", verticalAlign: "top", whiteSpace: "nowrap" }}>{label}</td>
-                  <td style={{ padding: "16px 0 16px 24px", color: "var(--text)", fontWeight: "400", lineHeight: "1.7" }}>{value}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       </section>
 
@@ -760,100 +743,56 @@ function KoePassVisual() {
 
 /* ── Seebuy visual — Q&A card mockup ─────────────────────── */
 function SeebuyVisual() {
-  const threads = [
-    {
-      category: "美容整形",
-      categoryColor: "#ec4899",
-      question: "二重整形、どこのクリニックがおすすめですか？自然な仕上がりを求めています。",
-      answer: "埋没法なら〇〇クリニックが自然仕上げで実績豊富です。まずカウンセリングを複数受けて比較するのがベストです。",
-      price: "¥2,000",
-      answerer: "整形",
-      answered: true,
-    },
-    {
-      category: "ビジネス",
-      categoryColor: "#3b82f6",
-      question: "副業から法人化するタイミングの目安を教えてください。",
-      answer: null,
-      price: "¥3,000",
-      answerer: null,
-      answered: false,
-    },
-  ];
-
   return (
-    <div style={{ width: "100%", maxWidth: "440px", minWidth: "320px", display: "flex", flexDirection: "column", gap: "16px" }}>
-      {threads.map((t, i) => (
-        <div
-          key={i}
-          style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: "16px",
-            overflow: "hidden",
-            boxShadow: "0 2px 12px rgba(14,22,49,0.05)",
-          }}
-        >
-          {/* header */}
-          <div style={{ padding: "14px 16px 10px", display: "flex", alignItems: "center", gap: "8px", borderBottom: "1px solid var(--border)" }}>
-            <span style={{
-              fontSize: "9px", fontFamily: "var(--font-syne)", fontWeight: "700",
-              letterSpacing: "0.1em", color: "white",
-              background: t.categoryColor, padding: "3px 8px", borderRadius: "10px",
-            }}>{t.category}</span>
-            <span style={{ marginLeft: "auto", fontSize: "12px", fontFamily: "var(--font-syne)", fontWeight: "800", color: "#16a34a" }}>{t.price}</span>
+    <div style={{ width: "280px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "24px", overflow: "hidden", boxShadow: "0 24px 64px rgba(14,22,49,0.10), 0 4px 16px rgba(14,22,49,0.06)" }}>
+      {/* app bar */}
+      <div style={{ background: "#16a34a", padding: "10px 20px 8px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ fontFamily: "var(--font-syne)", fontSize: "11px", fontWeight: "700", color: "white", letterSpacing: "0.08em" }}>Seebuy</span>
+        <span style={{ fontSize: "9px", color: "rgba(255,255,255,0.85)", fontFamily: "var(--font-sans)" }}>Q&A</span>
+      </div>
+
+      {/* notification */}
+      <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)", background: "rgba(22,163,74,0.04)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
+          <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#22c55e" }} />
+          <span style={{ fontSize: "10px", fontFamily: "var(--font-sans)", fontWeight: "500", color: "var(--text)" }}>新しい質問が届きました</span>
+        </div>
+        <p style={{ fontFamily: "var(--font-sans)", fontSize: "11px", color: "var(--muted)", lineHeight: "1.6", margin: 0, paddingLeft: "14px" }}>
+          「転職のタイミング、どう見極めましたか？」
+        </p>
+      </div>
+
+      {/* answer flow */}
+      <div style={{ padding: "16px 20px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "14px" }}>
+          <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "linear-gradient(135deg, #16a34a, #22c55e)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: "700", color: "white", fontFamily: "var(--font-syne)", flexShrink: 0 }}>Y</div>
+          <div>
+            <div style={{ fontFamily: "var(--font-sans)", fontSize: "12px", fontWeight: "500", color: "var(--text)" }}>あなた</div>
+            <div style={{ fontFamily: "var(--font-sans)", fontSize: "9px", color: "var(--muted)" }}>回答者</div>
           </div>
+          <div style={{ marginLeft: "auto", fontSize: "9px", fontFamily: "var(--font-syne)", color: "#16a34a", letterSpacing: "0.08em", border: "1px solid rgba(22,163,74,0.3)", padding: "3px 8px", borderRadius: "20px" }}>EXPERT</div>
+        </div>
 
-          {/* question */}
-          <div style={{ padding: "12px 16px", display: "flex", gap: "10px" }}>
-            <div style={{
-              width: "28px", height: "28px", borderRadius: "50%", flexShrink: 0,
-              background: "var(--surface-2)", border: "1px solid var(--border)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: "11px", color: "var(--muted)",
-            }}>Q</div>
-            <p style={{
-              fontFamily: "var(--font-sans)", fontSize: "11px", fontWeight: "400",
-              color: "var(--text)", lineHeight: "1.7", margin: 0,
-            }}>{t.question}</p>
+        {/* typing indicator */}
+        <div style={{ background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.12)", borderRadius: "14px", padding: "12px 16px", marginBottom: "12px" }}>
+          <p style={{ fontFamily: "var(--font-sans)", fontSize: "11px", color: "var(--text)", lineHeight: "1.7", margin: "0 0 4px", fontWeight: "300" }}>
+            結論から言うと、現職で学ぶべきことが無くなったと感じた瞬間です。市場価値は…
+          </p>
+          <span style={{ fontSize: "9px", fontFamily: "var(--font-sans)", color: "var(--muted)" }}>入力中...</span>
+        </div>
+
+        {/* send button */}
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px", background: "linear-gradient(135deg, #16a34a, #22c55e)", borderRadius: "20px", padding: "8px 18px", boxShadow: "0 4px 12px rgba(22,163,74,0.25)" }}>
+            <span style={{ fontSize: "11px", fontFamily: "var(--font-syne)", fontWeight: "700", color: "white", letterSpacing: "0.06em" }}>回答を送信</span>
           </div>
+        </div>
+      </div>
 
-          {/* answer */}
-          {t.answered && t.answer ? (
-            <div style={{ margin: "0 12px 12px", padding: "12px 14px", background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.15)", borderRadius: "12px", display: "flex", gap: "10px" }}>
-              <div style={{
-                width: "28px", height: "28px", borderRadius: "50%", flexShrink: 0,
-                background: "linear-gradient(135deg, #16a34a, #22c55e)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: "10px", fontWeight: "700", color: "white", fontFamily: "var(--font-syne)",
-              }}>{t.answerer}</div>
-              <div>
-                <p style={{ fontFamily: "var(--font-sans)", fontSize: "11px", color: "var(--text)", lineHeight: "1.7", margin: "0 0 6px", fontWeight: "300" }}>{t.answer}</p>
-                <span style={{ fontSize: "9px", fontFamily: "var(--font-syne)", color: "#16a34a", letterSpacing: "0.08em" }}>✓ 回答済み · 60%受取</span>
-              </div>
-            </div>
-          ) : (
-            <div style={{ margin: "0 12px 12px", padding: "10px 14px", background: "var(--surface-2)", border: "1px dashed var(--border)", borderRadius: "12px", textAlign: "center" }}>
-              <span style={{ fontSize: "10px", fontFamily: "var(--font-sans)", color: "var(--muted)" }}>回答待ち…</span>
-            </div>
-          )}
-        </div>
-      ))}
-
-      {/* revenue summary */}
-      <div style={{
-        background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "12px",
-        padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center",
-      }}>
-        <div style={{ flexShrink: 0 }}>
-          <div style={{ fontSize: "9px", fontFamily: "var(--font-syne)", color: "var(--muted)", letterSpacing: "0.12em", marginBottom: "6px" }}>今月の収益</div>
-          <div style={{ fontSize: "22px", fontFamily: "var(--font-syne)", fontWeight: "800", color: "var(--text)" }}>¥48,000</div>
-        </div>
-        <div style={{ width: "1px", height: "36px", background: "var(--border)", flexShrink: 0, margin: "0 16px" }} />
-        <div style={{ textAlign: "right", flexShrink: 0 }}>
-          <div style={{ fontSize: "9px", fontFamily: "var(--font-syne)", color: "var(--muted)", letterSpacing: "0.12em", marginBottom: "6px" }}>回答者の取り分</div>
-          <div style={{ fontSize: "22px", fontFamily: "var(--font-syne)", fontWeight: "800", color: "#22c55e" }}>60%</div>
-        </div>
+      {/* earnings bar */}
+      <div style={{ padding: "10px 20px 14px", borderTop: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span style={{ fontSize: "9px", fontFamily: "var(--font-sans)", color: "var(--muted)" }}>この回答の報酬</span>
+        <span style={{ fontSize: "13px", fontFamily: "var(--font-syne)", fontWeight: "800", color: "#16a34a" }}>¥3,000</span>
       </div>
     </div>
   );

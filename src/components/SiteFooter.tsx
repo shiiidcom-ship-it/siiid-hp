@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 export default function SiteFooter() {
   return (
@@ -17,27 +18,8 @@ export default function SiteFooter() {
         >
           {/* Brand */}
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
-              <div
-                style={{
-                  width: "28px",
-                  height: "28px",
-                  background: "linear-gradient(135deg, #1d4ed8, #3b82f6)",
-                  borderRadius: "7px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "12px",
-                  fontWeight: "800",
-                  color: "white",
-                  fontFamily: "var(--font-syne)",
-                }}
-              >
-                S
-              </div>
-              <span style={{ fontFamily: "var(--font-syne)", fontWeight: "700", fontSize: "15px", color: "var(--text)", letterSpacing: "0.05em" }}>
-                株式会社SiiiD
-              </span>
+            <div style={{ marginBottom: "16px" }}>
+              <Image src="/logo-transparent.png" alt="SiiiD" width={100} height={34} style={{ objectFit: "contain" }} />
             </div>
             <p style={{ color: "var(--muted)", fontSize: "12px", lineHeight: "1.8", margin: 0 }}>
               発信だけで生きていける、を当たり前に。
