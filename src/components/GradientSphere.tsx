@@ -414,6 +414,137 @@ export default function GradientSphere() {
     const particles = new THREE.Points(particleGeo, particleMat);
     scene.add(particles);
 
+    // ── Tear chunks (InstancedMesh) ──
+    const MAX_CHUNKS = 60;
+    const chunkGeo = new THREE.IcosahedronGeometry(0.08, 2);
+    const chunkMat = new THREE.MeshBasicMaterial({
+      transparent: true,
+      depthWrite: false,
+    });
+    const chunks = new THREE.InstancedMesh(chunkGeo, chunkMat, MAX_CHUNKS);
+    chunks.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    // Hide all initially
+    const emptyMatrix = new THREE.Matrix4().makeScale(0, 0, 0);
+    for (let i = 0; i < MAX_CHUNKS; i++) chunks.setMatrixAt(i, emptyMatrix);
+    chunks.instanceMatrix.needsUpdate = true;
+    // Per-instance color
+    const chunkColors = new Float32Array(MAX_CHUNKS * 3);
+    chunks.instanceColor = new THREE.InstancedBufferAttribute(chunkColors, 3);
+    scene.add(chunks);
+
+    // Chunk state
+    interface ChunkState {
+      alive: boolean;
+      pos: THREE.Vector3;
+      vel: THREE.Vector3;
+      rotAxis: THREE.Vector3;
+      rotSpeed: number;
+      rot: number;
+      scale: number;
+      life: number;       // 0→1, dies at 1
+      maxLife: number;
+      color: THREE.Color;
+    }
+    const chunkPool: ChunkState[] = Array.from({ length: MAX_CHUNKS }, () => ({
+      alive: false,
+      pos: new THREE.Vector3(),
+      vel: new THREE.Vector3(),
+      rotAxis: new THREE.Vector3(1, 0, 0),
+      rotSpeed: 0,
+      rot: 0,
+      scale: 1,
+      life: 1,
+      maxLife: 1,
+      color: new THREE.Color(),
+    }));
+    let nextChunk = 0;
+    let lastEmitTime = 0;
+
+    const brandColors = [
+      new THREE.Color(0xe8458c),
+      new THREE.Color(0x1d4ed8),
+      new THREE.Color(0x16a34a),
+      new THREE.Color(0x8b5cf6),
+      new THREE.Color(0xf472b6),
+      new THREE.Color(0x3b82f6),
+    ];
+
+    function emitChunks(dir: THREE.Vector3, strength: number, count: number) {
+      for (let i = 0; i < count; i++) {
+        const c = chunkPool[nextChunk % MAX_CHUNKS];
+        nextChunk++;
+        c.alive = true;
+        c.life = 0;
+        c.maxLife = 1.5 + Math.random() * 1.5;
+        c.scale = 0.5 + Math.random() * 1.5;
+        c.rot = 0;
+        c.rotSpeed = (Math.random() - 0.5) * 12;
+        c.rotAxis.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
+
+        // Spawn at the stretched tip of the sphere
+        const spread = 0.4;
+        c.pos.copy(dir).multiplyScalar(1.4 + strength * 0.5);
+        c.pos.x += (Math.random() - 0.5) * spread;
+        c.pos.y += (Math.random() - 0.5) * spread;
+        c.pos.z += (Math.random() - 0.5) * spread;
+
+        // Velocity: outward along drag + random spread
+        const speed = 1.5 + Math.random() * 3;
+        c.vel.copy(dir).multiplyScalar(speed);
+        c.vel.x += (Math.random() - 0.5) * 2;
+        c.vel.y += (Math.random() - 0.5) * 2 + 1; // slight upward bias
+        c.vel.z += (Math.random() - 0.5) * 1;
+
+        c.color.copy(brandColors[Math.floor(Math.random() * brandColors.length)]);
+      }
+    }
+
+    function updateChunks(dt: number) {
+      const gravity = -3.0;
+      const dummy = new THREE.Matrix4();
+      const quat = new THREE.Quaternion();
+      const scaleVec = new THREE.Vector3();
+
+      for (let i = 0; i < MAX_CHUNKS; i++) {
+        const c = chunkPool[i];
+        if (!c.alive) {
+          chunks.setMatrixAt(i, emptyMatrix);
+          continue;
+        }
+
+        c.life += dt;
+        if (c.life >= c.maxLife) {
+          c.alive = false;
+          chunks.setMatrixAt(i, emptyMatrix);
+          continue;
+        }
+
+        // Physics
+        c.vel.y += gravity * dt;
+        c.vel.multiplyScalar(0.995); // air drag
+        c.pos.addScaledVector(c.vel, dt);
+        c.rot += c.rotSpeed * dt;
+
+        // Fade + shrink at end of life
+        const lifeRatio = c.life / c.maxLife;
+        const fadeScale = lifeRatio < 0.7 ? c.scale : c.scale * (1.0 - (lifeRatio - 0.7) / 0.3);
+        const s = Math.max(fadeScale, 0.01);
+
+        quat.setFromAxisAngle(c.rotAxis, c.rot);
+        scaleVec.set(s, s, s);
+        dummy.compose(c.pos, quat, scaleVec);
+        chunks.setMatrixAt(i, dummy);
+
+        // Color with alpha baked as brightness fade
+        const alpha = lifeRatio < 0.6 ? 1 : 1.0 - (lifeRatio - 0.6) / 0.4;
+        chunkColors[i * 3] = c.color.r * alpha;
+        chunkColors[i * 3 + 1] = c.color.g * alpha;
+        chunkColors[i * 3 + 2] = c.color.b * alpha;
+      }
+      chunks.instanceMatrix.needsUpdate = true;
+      (chunks.instanceColor as THREE.InstancedBufferAttribute).needsUpdate = true;
+    }
+
     // ── Raycaster for drag detection ──
     const raycaster = new THREE.Raycaster();
     const mouseNDC = new THREE.Vector2();
@@ -514,6 +645,19 @@ export default function GradientSphere() {
       sphereUniforms.uDragDir.value.copy(drag.dir);
       sphereUniforms.uDragStrength.value = drag.strength;
 
+      // ── Emit chunks when stretched enough ──
+      if (drag.active && drag.strength > 1.0 && t - lastEmitTime > 0.08) {
+        const count = Math.floor(1 + (drag.strength - 1.0) * 2);
+        emitChunks(drag.dir, drag.strength, Math.min(count, 5));
+        lastEmitTime = t;
+      }
+      // Burst on release if was stretched
+      if (!drag.active && drag.strength > 0.8 && drag.velocity < -2) {
+        emitChunks(drag.dir, drag.strength, 8);
+      }
+
+      updateChunks(dt);
+
       // Gentle rotation (slow down during drag)
       const rotSpeed = drag.strength > 0.1 ? 0.0003 : 0.0015;
       sphere.rotation.y += rotSpeed;
@@ -552,6 +696,9 @@ export default function GradientSphere() {
       glowMat.dispose();
       particleGeo.dispose();
       particleMat.dispose();
+      chunkGeo.dispose();
+      chunkMat.dispose();
+      chunks.dispose();
       if (container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement);
       }
