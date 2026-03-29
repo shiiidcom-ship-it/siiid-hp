@@ -782,7 +782,7 @@ function SeebuyVisual() {
   ];
 
   return (
-    <div style={{ width: "100%", maxWidth: "400px", display: "flex", flexDirection: "column", gap: "16px" }}>
+    <div style={{ width: "100%", maxWidth: "440px", minWidth: "320px", display: "flex", flexDirection: "column", gap: "16px" }}>
       {threads.map((t, i) => (
         <div
           key={i}
