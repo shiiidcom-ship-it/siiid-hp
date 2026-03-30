@@ -524,11 +524,62 @@ export default function GradientSphere() {
       dragRef.current.target = 0; // spring back
     };
 
+    // ── Touch events (mobile drag) ──
+    const getTouchNDC = (touch: Touch) => ({
+      x: (touch.clientX / window.innerWidth) * 2 - 1,
+      y: -(touch.clientY / window.innerHeight) * 2 + 1,
+    });
+
+    const onTouchStart = (e: TouchEvent) => {
+      const t = e.touches[0];
+      const ndc = getTouchNDC(t);
+      mouseNDC.set(ndc.x, ndc.y);
+      raycaster.setFromCamera(mouseNDC, camera);
+      const hits = raycaster.intersectObject(sphere);
+      if (hits.length > 0) {
+        dragRef.current.active = true;
+        const hitDir = hits[0].point.clone().sub(sphere.position).normalize();
+        dragRef.current.dir.copy(hitDir);
+        dragRef.current.target = 0.1;
+        hoverRef.current = 1;
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      const t = e.touches[0];
+      const ndc = getTouchNDC(t);
+      mouseRef.current.x = ndc.x;
+      mouseRef.current.y = ndc.y;
+
+      if (dragRef.current.active) {
+        mouseNDC.set(ndc.x, ndc.y);
+        raycaster.setFromCamera(mouseNDC, camera);
+        const plane = new Plane(new Vector3(0, 0, 1), 0);
+        const target = new Vector3();
+        raycaster.ray.intersectPlane(plane, target);
+        if (target) {
+          const dir = target.clone().sub(sphere.position).normalize();
+          dragRef.current.dir.copy(dir);
+          const dist = target.distanceTo(sphere.position);
+          dragRef.current.target = Math.min(dist * 0.8, 3.0);
+        }
+      }
+    };
+
+    const onTouchEnd = () => {
+      dragRef.current.active = false;
+      dragRef.current.target = 0;
+      hoverRef.current = 0;
+    };
+
     window.addEventListener("mousemove", onMouseMove, { passive: true });
     container.addEventListener("mouseenter", onMouseEnter);
     container.addEventListener("mouseleave", onMouseLeave);
     container.addEventListener("mousedown", onMouseDown);
     window.addEventListener("mouseup", onMouseUp);
+    container.addEventListener("touchstart", onTouchStart, { passive: true });
+    container.addEventListener("touchmove", onTouchMove, { passive: true });
+    container.addEventListener("touchend", onTouchEnd);
 
     // ── Render loop (30fps cap) ──
     let animId: number;
@@ -611,6 +662,9 @@ export default function GradientSphere() {
       container.removeEventListener("mouseenter", onMouseEnter);
       container.removeEventListener("mouseleave", onMouseLeave);
       container.removeEventListener("mousedown", onMouseDown);
+      container.removeEventListener("touchstart", onTouchStart);
+      container.removeEventListener("touchmove", onTouchMove);
+      container.removeEventListener("touchend", onTouchEnd);
       renderer.dispose();
       sphereGeo.dispose();
       sphereMat.dispose();

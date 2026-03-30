@@ -69,12 +69,21 @@ function SplitTextReveal({
 /* ── main component ───────────────────────────────────────── */
 export function HomeClient() {
   const [scrolled, setScrolled] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 60);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
   }, []);
 
   /* ── CSS-based scroll-triggered section reveals ── */
@@ -97,7 +106,7 @@ export function HomeClient() {
 
   return (
     <div style={{ position: "relative" }}>
-      {/* ── NAV (scroll-reactive) ────────────────────────── */}
+      {/* ── NAV (scroll-reactive + mobile hamburger) ─── */}
       <nav
         style={{
           position: "fixed",
@@ -105,54 +114,54 @@ export function HomeClient() {
           left: 0,
           right: 0,
           zIndex: 100,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "28px 48px",
-          background: scrolled ? "rgba(245,247,255,0.82)" : "transparent",
-          backdropFilter: scrolled ? "blur(18px) saturate(1.5)" : "none",
-          WebkitBackdropFilter: scrolled ? "blur(18px) saturate(1.5)" : "none",
-          borderBottom: scrolled ? "1px solid var(--border)" : "1px solid transparent",
+          background: scrolled || menuOpen ? "rgba(245,247,255,0.92)" : "transparent",
+          backdropFilter: scrolled || menuOpen ? "blur(18px) saturate(1.5)" : "none",
+          WebkitBackdropFilter: scrolled || menuOpen ? "blur(18px) saturate(1.5)" : "none",
+          borderBottom: scrolled || menuOpen ? "1px solid var(--border)" : "1px solid transparent",
           transition: "background 0.45s cubic-bezier(0.16,1,0.3,1), border-color 0.45s",
         }}
       >
-        <div style={{ display: "flex", gap: "32px" }}>
-          {[
-            { label: "KoePass", href: "/koepass" },
-            { label: "Seebuy", href: "https://seebuy-lp-one.vercel.app/" },
-            { label: "会社について", href: "#about" },
-          ].map((item) => (
-            <Link
-              key={item.label}
-              href={item.href}
-              style={{
-                fontSize: "12px",
-                fontFamily: "var(--font-sans)",
-                letterSpacing: "0.12em",
-                color: "rgba(14,22,49,0.5)",
-                textDecoration: "none",
-                transition: "color 0.3s",
-              }}
-              className="nav-link"
-            >
-              {item.label}
-            </Link>
-          ))}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px clamp(20px, 5vw, 48px)", height: "56px" }}>
+          {/* desktop links */}
+          <div className="desktop-nav" style={{ display: "flex", gap: "32px" }}>
+            {[
+              { label: "KoePass", href: "/koepass" },
+              { label: "Seebuy", href: "https://seebuy-lp-one.vercel.app/" },
+              { label: "会社について", href: "#about" },
+            ].map((item) => (
+              <Link key={item.label} href={item.href} style={{ fontSize: "12px", fontFamily: "var(--font-sans)", letterSpacing: "0.12em", color: "rgba(14,22,49,0.5)", textDecoration: "none", transition: "color 0.3s" }} className="nav-link">
+                {item.label}
+              </Link>
+            ))}
+          </div>
+
+          {/* mobile hamburger */}
+          <button
+            className="mobile-menu-btn"
+            onClick={() => setMenuOpen(!menuOpen)}
+            style={{ background: "none", border: "none", cursor: "pointer", padding: "8px", display: "none", flexDirection: "column", gap: "5px" }}
+            aria-label="メニュー"
+          >
+            {[0, 1, 2].map((i) => (
+              <span key={i} style={{ display: "block", width: "20px", height: "2px", background: "var(--text)", borderRadius: "1px", transition: "all 0.3s", transform: menuOpen && i === 0 ? "rotate(45deg) translate(5px, 5px)" : menuOpen && i === 2 ? "rotate(-45deg) translate(5px, -5px)" : "none", opacity: menuOpen && i === 1 ? 0 : 1 }} />
+            ))}
+          </button>
         </div>
 
-        <Link
-          href="#contact"
-          style={{
-            fontSize: "12px",
-            fontFamily: "var(--font-sans)",
-            letterSpacing: "0.12em",
-            color: "rgba(14,22,49,0.55)",
-            textDecoration: "none",
-          }}
-          className="nav-link"
-        >
-          お問い合わせ →
-        </Link>
+        {/* mobile dropdown */}
+        {menuOpen && (
+          <div style={{ padding: "0 clamp(20px, 5vw, 48px) 16px", borderTop: "1px solid var(--border)" }}>
+            {[
+              { label: "KoePass", href: "/koepass", color: "#e8458c" },
+              { label: "Seebuy", href: "https://seebuy-lp-one.vercel.app/", color: "#16a34a" },
+              { label: "会社について", href: "#about", color: "var(--text)" },
+            ].map((item) => (
+              <Link key={item.href} href={item.href} onClick={() => setMenuOpen(false)} style={{ display: "block", padding: "12px 0", color: item.color, textDecoration: "none", fontSize: "14px", fontFamily: "var(--font-sans)", fontWeight: "500", borderBottom: "1px solid var(--border)" }}>
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        )}
       </nav>
 
       {/* ── HERO ─────────────────────────────────────────── */}
@@ -173,8 +182,10 @@ export function HomeClient() {
           <WebGLShaderBg />
         </div>
 
-        {/* Three.js sphere */}
-        <GradientSphere />
+        {/* Three.js sphere (hidden on mobile for perf) */}
+        <div className="sphere-wrapper">
+          <GradientSphere />
+        </div>
 
         {/* giant SiiiD — watermark */}
         <div
@@ -387,7 +398,7 @@ export function HomeClient() {
           <div
             className="section-visual"
             style={{
-              flex: "0 0 clamp(280px, 40%, 520px)",
+              flex: "0 0 clamp(260px, 40%, 520px)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -516,12 +527,57 @@ export function HomeClient() {
         .nav-link:hover { color: var(--text) !important; }
         .cta-btn-koepass:hover { background: rgba(232,69,140,0.08) !important; }
         .cta-btn-seebuy:hover  { background: rgba(22,163,74,0.08)  !important; }
-        @media (max-width: 768px) {
-          .section-visual { display: none !important; }
-          .values-grid { grid-template-columns: 1fr !important; }
+
+        /* ── Desktop ── */
+        @media (min-width: 769px) {
+          .mobile-menu-btn { display: none !important; }
+          .desktop-nav { display: flex !important; }
         }
+
+        /* ── Mobile ── */
+        @media (max-width: 768px) {
+          .desktop-nav { display: none !important; }
+          .mobile-menu-btn { display: flex !important; }
+
+          /* Sphere hidden on mobile for performance */
+          .sphere-wrapper { display: none !important; }
+
+          /* Product sections: stack vertically */
+          .reveal-section { flex-direction: column !important; gap: 32px !important; padding: 60px 20px !important; min-height: auto !important; }
+          .section-visual { flex: none !important; width: 100% !important; max-width: 300px !important; margin: 0 auto; }
+
+          /* Values grid */
+          .values-grid { grid-template-columns: 1fr !important; }
+
+          /* Hero adjustments */
+          .hero-content { padding: 0 16px !important; }
+        }
+
         @media (prefers-reduced-motion: reduce) {
-          .char { opacity: 1 !important; transform: none !important; }
+          .split-char { opacity: 1 !important; animation: none !important; }
+        }
+
+        /* fadeIn for scroll indicator */
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+
+        /* splitCharIn for text reveal */
+        @keyframes splitCharIn {
+          from { opacity: 0; transform: translateY(40px) rotateX(-90deg) scale(0.8); }
+          to { opacity: 1; transform: translateY(0) rotateX(0) scale(1); }
+        }
+
+        /* reveal-section animation */
+        .reveal-section {
+          opacity: 0;
+          transform: translateY(40px);
+          transition: opacity 0.8s ease, transform 0.8s ease;
+        }
+        .reveal-section.visible {
+          opacity: 1;
+          transform: translateY(0);
         }
       `}</style>
     </div>
