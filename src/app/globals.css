@@ -217,9 +217,96 @@ p, li {
   transform: translateY(0);
 }
 
+.product-section.reveal-section {
+  transform: none;
+}
+
+.product-stagger {
+  opacity: 0;
+  transform: translateY(30px);
+  transition:
+    opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: var(--stagger-delay, 0s);
+  will-change: opacity, transform;
+}
+
+.product-section.visible .product-stagger {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.product-headline-line {
+  display: block;
+}
+
+.product-visual-shell {
+  opacity: 0;
+  transform: translateY(40px);
+  transition:
+    opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.25s,
+    transform 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.25s;
+}
+
+.product-section.visible .product-visual-shell {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.product-visual-inner {
+  transform: translate3d(0, var(--parallax-y, 0px), 0);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+
+.value-count {
+  display: inline-block;
+  min-width: 2ch;
+}
+
+.cta-btn {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  --shine-x: 50%;
+  --shine-y: 50%;
+  --shine-opacity: 0;
+}
+
+.cta-btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.cta-btn-shine {
+  position: absolute;
+  inset: -1px;
+  pointer-events: none;
+  opacity: var(--shine-opacity);
+  background:
+    radial-gradient(120px circle at var(--shine-x) var(--shine-y), rgba(255, 255, 255, 0.34), transparent 62%),
+    linear-gradient(115deg, transparent 25%, rgba(255, 255, 255, 0.18) 50%, transparent 75%);
+  transition: opacity 0.25s ease;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .split-char { opacity: 1 !important; animation: none !important; }
   .reveal-section { opacity: 1 !important; transform: none !important; transition: none !important; }
+  .product-stagger,
+  .product-visual-shell,
+  .product-visual-inner {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+  .cta-btn-shine {
+    opacity: 0 !important;
+    transition: none !important;
+  }
 }
 
 /* Gradient text */

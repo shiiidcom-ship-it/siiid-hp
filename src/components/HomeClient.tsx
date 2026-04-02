@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 
@@ -34,6 +35,27 @@ const PRODUCTS = [
   },
 ];
 
+const VALUES = [
+  {
+    num: "01",
+    title: "発信者ファースト",
+    desc: "すべての意思決定は「発信者にとって最もシンプルか」で判断します。",
+  },
+  {
+    num: "02",
+    title: "フェアな収益構造",
+    desc: "不透明な手数料や隠れたコストを排除し、発信者が正しく報われる仕組みを設計します。",
+  },
+  {
+    num: "03",
+    title: "テクノロジーで摩擦をゼロに",
+    desc: "「声を録る」「質問に答える」——それだけで収益が生まれる世界を技術で実現します。",
+  },
+] as const;
+
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(Math.max(value, min), max);
+
 
 /* ── split-text reveal (CSS animation) ─────────────────────── */
 function SplitTextReveal({
@@ -42,7 +64,7 @@ function SplitTextReveal({
   delay = 0,
 }: {
   text: string;
-  style?: React.CSSProperties;
+  style?: CSSProperties;
   delay?: number;
 }) {
   return (
@@ -66,17 +88,48 @@ function SplitTextReveal({
   );
 }
 
+function ProductHeadline({
+  text,
+  style,
+  delayStart,
+}: {
+  text: string;
+  style: CSSProperties;
+  delayStart: number;
+}) {
+  return (
+    <h2 style={style}>
+      {text.split("\n").map((line, index) => (
+        <span
+          key={`${line}-${index}`}
+          className="product-stagger product-headline-line"
+          style={
+            {
+              "--stagger-delay": `${delayStart + index * 0.15}s`,
+            } as CSSProperties
+          }
+        >
+          {line}
+        </span>
+      ))}
+    </h2>
+  );
+}
+
 /* ── main component ───────────────────────────────────────── */
 export function HomeClient() {
+  const rootRef = useRef<HTMLDivElement>(null);
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 60);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const updateMotionPreference = () => setPrefersReducedMotion(media.matches);
+    updateMotionPreference();
+    media.addEventListener("change", updateMotionPreference);
+    return () => media.removeEventListener("change", updateMotionPreference);
   }, []);
 
   useEffect(() => {
@@ -104,8 +157,149 @@ export function HomeClient() {
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+
+    const parallaxItems = Array.from(
+      root.querySelectorAll<HTMLElement>("[data-parallax-speed]")
+    );
+    let frame = 0;
+
+    const updateMotion = () => {
+      const scrollY = window.scrollY;
+      const heroProgress = prefersReducedMotion
+        ? 0
+        : clamp(scrollY / (window.innerHeight * 0.62), 0, 1);
+      const sphereOpacity = clamp(1 - heroProgress * 1.1, 0, 1);
+      const scrollOpacity = clamp(1 - heroProgress * 1.35, 0, 1);
+
+      setScrolled((prev) => {
+        const next = scrollY > 60;
+        return prev === next ? prev : next;
+      });
+
+      root.style.setProperty("--hero-sphere-scale", `${1 - heroProgress * 0.42}`);
+      root.style.setProperty("--hero-sphere-opacity", `${sphereOpacity}`);
+      root.style.setProperty("--hero-sphere-y", `${heroProgress * -96}px`);
+      root.style.setProperty("--hero-scroll-opacity", `${scrollOpacity}`);
+
+      if (prefersReducedMotion) {
+        parallaxItems.forEach((item) => {
+          item.style.setProperty("--parallax-y", "0px");
+        });
+        return;
+      }
+
+      const viewportCenter = window.innerHeight * 0.5;
+      const mobileFactor = isMobile ? 0.55 : 1;
+
+      parallaxItems.forEach((item) => {
+        const speed = Number(item.dataset.parallaxSpeed ?? 1);
+        const rect = item.getBoundingClientRect();
+        const itemCenter = rect.top + rect.height * 0.5;
+        const offset = (viewportCenter - itemCenter) / window.innerHeight;
+        const translateY = clamp(offset * speed * 72 * mobileFactor, -36, 36);
+        item.style.setProperty("--parallax-y", `${translateY.toFixed(1)}px`);
+      });
+    };
+
+    const requestUpdate = () => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = 0;
+        updateMotion();
+      });
+    };
+
+    updateMotion();
+    window.addEventListener("scroll", requestUpdate, { passive: true });
+    window.addEventListener("resize", requestUpdate);
+
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", requestUpdate);
+      window.removeEventListener("resize", requestUpdate);
+    };
+  }, [isMobile, prefersReducedMotion]);
+
+  useEffect(() => {
+    const counters = document.querySelectorAll<HTMLElement>("[data-countup]");
+    if (!counters.length) return;
+
+    const animateCounter = (counter: HTMLElement) => {
+      const target = Number(counter.dataset.countup ?? 0);
+      if (!Number.isFinite(target)) return;
+
+      if (prefersReducedMotion) {
+        counter.textContent = String(target).padStart(2, "0");
+        return;
+      }
+
+      const duration = 900;
+      let startTime = 0;
+
+      const tick = (time: number) => {
+        if (!startTime) startTime = time;
+        const progress = clamp((time - startTime) / duration, 0, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const value = Math.round(target * eased);
+        counter.textContent = String(value).padStart(2, "0");
+
+        if (progress < 1) {
+          window.requestAnimationFrame(tick);
+        }
+      };
+
+      window.requestAnimationFrame(tick);
+    };
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          const counter = entry.target as HTMLElement;
+          if (counter.dataset.animated === "true") return;
+          counter.dataset.animated = "true";
+          animateCounter(counter);
+          observer.unobserve(counter);
+        });
+      },
+      { threshold: 0.5 }
+    );
+
+    counters.forEach((counter) => observer.observe(counter));
+    return () => observer.disconnect();
+  }, [prefersReducedMotion]);
+
+  const handleCtaPointerMove = (event: ReactPointerEvent<HTMLAnchorElement>) => {
+    const button = event.currentTarget;
+    const rect = button.getBoundingClientRect();
+    button.style.setProperty("--shine-x", `${event.clientX - rect.left}px`);
+    button.style.setProperty("--shine-y", `${event.clientY - rect.top}px`);
+  };
+
+  const handleCtaPointerEnter = (event: ReactPointerEvent<HTMLAnchorElement>) => {
+    event.currentTarget.style.setProperty("--shine-opacity", "1");
+  };
+
+  const handleCtaPointerLeave = (event: ReactPointerEvent<HTMLAnchorElement>) => {
+    event.currentTarget.style.setProperty("--shine-opacity", "0");
+  };
+
   return (
-    <div style={{ position: "relative" }}>
+    <div
+      ref={rootRef}
+      style={
+        {
+          position: "relative",
+          "--hero-sphere-scale": 1,
+          "--hero-sphere-opacity": 1,
+          "--hero-sphere-y": "0px",
+          "--hero-scroll-opacity": 1,
+        } as CSSProperties
+      }
+    >
       {/* ── NAV (scroll-reactive + mobile hamburger) ─── */}
       <nav
         style={{
@@ -259,6 +453,7 @@ export function HomeClient() {
 
         {/* scroll indicator */}
         <div
+          className="scroll-indicator"
           style={{
             position: "absolute",
             bottom: "40px",
@@ -268,8 +463,7 @@ export function HomeClient() {
             flexDirection: "column",
             alignItems: "center",
             gap: "8px",
-            opacity: 0,
-            animation: "fadeIn 1s ease forwards 1.5s",
+            opacity: "var(--hero-scroll-opacity)",
             zIndex: 2,
           }}
         >
@@ -298,7 +492,7 @@ export function HomeClient() {
       {PRODUCTS.map((p, idx) => (
         <section
           key={p.id}
-          className="reveal-section"
+          className="reveal-section product-section"
           style={{
             minHeight: "100vh",
             display: "flex",
@@ -312,6 +506,7 @@ export function HomeClient() {
           {/* text */}
           <div style={{ flex: 1, minWidth: 0 }}>
             <p
+              className="product-stagger"
               style={{
                 fontFamily: "var(--font-mincho)",
                 fontSize: "clamp(28px, 4vw, 52px)",
@@ -321,12 +516,14 @@ export function HomeClient() {
                 margin: "0 0 12px",
                 lineHeight: "1",
                 viewTransitionName: `${p.id}-hero`,
-              } as React.CSSProperties}
+                "--stagger-delay": "0s",
+              } as CSSProperties}
             >
               {p.name}
             </p>
 
             <p
+              className="product-stagger"
               style={{
                 fontFamily: "var(--font-syne)",
                 fontSize: "10px",
@@ -335,12 +532,15 @@ export function HomeClient() {
                 textTransform: "uppercase",
                 marginBottom: "24px",
                 opacity: 0.9,
-              }}
+                "--stagger-delay": "0.15s",
+              } as CSSProperties}
             >
               {p.tagline}
             </p>
 
-            <h2
+            <ProductHeadline
+              text={p.headline}
+              delayStart={0.3}
               style={{
                 fontFamily: "var(--font-mincho)",
                 fontSize: p.headlineSize ?? "clamp(32px, 5vw, 72px)",
@@ -349,13 +549,11 @@ export function HomeClient() {
                 lineHeight: "1.25",
                 letterSpacing: "-0.01em",
                 margin: "0 0 32px",
-                whiteSpace: "pre-line",
               }}
-            >
-              {p.headline}
-            </h2>
+            />
 
             <p
+              className="product-stagger"
               style={{
                 fontFamily: "var(--font-sans)",
                 fontSize: "clamp(13px, 1.5vw, 16px)",
@@ -364,7 +562,8 @@ export function HomeClient() {
                 lineHeight: "2",
                 margin: "0 0 48px",
                 maxWidth: "460px",
-              }}
+                "--stagger-delay": `${0.3 + p.headline.split("\n").length * 0.15}s`,
+              } as CSSProperties}
             >
               {p.body}
             </p>
@@ -386,17 +585,22 @@ export function HomeClient() {
                 textDecoration: "none",
                 transition: "background 0.25s, color 0.25s",
                 textTransform: "uppercase",
-              }}
-              className={`cta-btn-${p.id}`}
+                "--stagger-delay": `${0.45 + p.headline.split("\n").length * 0.15}s`,
+              } as CSSProperties}
+              className={`cta-btn product-stagger cta-btn-${p.id}`}
+              onPointerMove={handleCtaPointerMove}
+              onPointerEnter={handleCtaPointerEnter}
+              onPointerLeave={handleCtaPointerLeave}
             >
-              {p.cta}
-              <span style={{ fontFamily: "monospace" }}>→</span>
+              <span className="cta-btn-shine" aria-hidden="true" />
+              <span style={{ position: "relative", zIndex: 1 }}>{p.cta}</span>
+              <span style={{ fontFamily: "monospace", position: "relative", zIndex: 1 }}>→</span>
             </Link>
           </div>
 
           {/* visual */}
           <div
-            className="section-visual"
+            className="section-visual product-visual-shell"
             style={{
               flex: "0 0 clamp(260px, 40%, 520px)",
               display: "flex",
@@ -404,7 +608,12 @@ export function HomeClient() {
               justifyContent: "center",
             }}
           >
-            {p.id === "koepass" ? <KoePassVisual /> : <SeebuyVisual />}
+            <div
+              className="product-visual-inner"
+              data-parallax-speed={idx % 2 === 0 ? "0.9" : "1.2"}
+            >
+              {p.id === "koepass" ? <KoePassVisual /> : <SeebuyVisual />}
+            </div>
           </div>
         </section>
       ))}
@@ -475,13 +684,22 @@ export function HomeClient() {
         }}>Our Values</p>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "32px" }} className="values-grid">
-          {[
-            { num: "01", title: "発信者ファースト", desc: "すべての意思決定は「発信者にとって最もシンプルか」で判断します。" },
-            { num: "02", title: "フェアな収益構造", desc: "不透明な手数料や隠れたコストを排除し、発信者が正しく報われる仕組みを設計します。" },
-            { num: "03", title: "テクノロジーで摩擦をゼロに", desc: "「声を録る」「質問に答える」——それだけで収益が生まれる世界を技術で実現します。" },
-          ].map((v) => (
+          {VALUES.map((v) => (
             <div key={v.num} style={{ padding: "32px 0", borderTop: "1px solid var(--border)" }}>
-              <span style={{ fontFamily: "var(--font-syne)", fontSize: "12px", color: "var(--blue)", letterSpacing: "0.1em", fontWeight: "700" }}>{v.num}</span>
+              <span
+                className="value-count"
+                data-countup={Number(v.num)}
+                aria-label={v.num}
+                style={{
+                  fontFamily: "var(--font-syne)",
+                  fontSize: "12px",
+                  color: "var(--blue)",
+                  letterSpacing: "0.1em",
+                  fontWeight: "700",
+                }}
+              >
+                00
+              </span>
               <h3 style={{ fontFamily: "var(--font-mincho)", fontSize: "20px", fontWeight: "700", color: "var(--text)", margin: "16px 0 12px", lineHeight: "1.4" }}>{v.title}</h3>
               <p style={{ fontFamily: "var(--font-sans)", fontSize: "13px", color: "var(--muted)", lineHeight: "1.9", margin: 0, fontWeight: "300" }}>{v.desc}</p>
             </div>
@@ -527,6 +745,16 @@ export function HomeClient() {
         .nav-link:hover { color: var(--text) !important; }
         .cta-btn-koepass:hover { background: rgba(232,69,140,0.08) !important; }
         .cta-btn-seebuy:hover  { background: rgba(22,163,74,0.08)  !important; }
+        .sphere-wrapper {
+          transform: translate3d(0, var(--hero-sphere-y), 0) scale(var(--hero-sphere-scale));
+          transform-origin: center center;
+          opacity: var(--hero-sphere-opacity);
+          transition: opacity 0.24s linear;
+          will-change: transform, opacity;
+        }
+        .scroll-indicator {
+          transition: opacity 0.2s linear;
+        }
 
         /* ── Desktop ── */
         @media (min-width: 769px) {
@@ -545,6 +773,7 @@ export function HomeClient() {
           /* Product sections: stack vertically */
           .reveal-section { flex-direction: column !important; gap: 32px !important; padding: 60px 20px !important; min-height: auto !important; }
           .section-visual { flex: none !important; width: 100% !important; max-width: 300px !important; margin: 0 auto; }
+          .product-headline-line { white-space: normal !important; }
 
           /* Values grid */
           .values-grid { grid-template-columns: 1fr !important; }
@@ -555,29 +784,7 @@ export function HomeClient() {
 
         @media (prefers-reduced-motion: reduce) {
           .split-char { opacity: 1 !important; animation: none !important; }
-        }
-
-        /* fadeIn for scroll indicator */
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-
-        /* splitCharIn for text reveal */
-        @keyframes splitCharIn {
-          from { opacity: 0; transform: translateY(40px) rotateX(-90deg) scale(0.8); }
-          to { opacity: 1; transform: translateY(0) rotateX(0) scale(1); }
-        }
-
-        /* reveal-section animation */
-        .reveal-section {
-          opacity: 0;
-          transform: translateY(40px);
-          transition: opacity 0.8s ease, transform 0.8s ease;
-        }
-        .reveal-section.visible {
-          opacity: 1;
-          transform: translateY(0);
+          .sphere-wrapper { transform: none !important; opacity: 1 !important; transition: none !important; }
         }
       `}</style>
     </div>
